@@ -39,7 +39,7 @@ test("shows balance, pace and stat row", () => {
   const { view } = setup();
   view();
   expect(screen.getByText(/in credit this period/i)).toBeInTheDocument();
-  expect(screen.getByText(/period budget/i)).toBeInTheDocument();
+  expect(screen.getByText(/daily budget/i)).toBeInTheDocument();
   expect(screen.getByText(/earned back/i)).toBeInTheDocument();
 });
 

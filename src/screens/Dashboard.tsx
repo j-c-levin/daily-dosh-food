@@ -65,7 +65,8 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
   const paceIsPositive = pace.avgPerDay >= 0;
   const finishUp = pace.projectedEnd >= 0;
   const { consumed, earned } = entryTotals(period.entries);
-  const periodBudget = period.budgetPerDay * settings.periodLengthDays;
+  const dailyBudget = period.budgetPerDay;
+  const captionBudgetPerDay = settings.tdee - settings.deficit;
   const sparklineValues = dailyBalances(period, app.today);
 
   return (
@@ -126,11 +127,16 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
           </span>{" "}
           a day · {pace.daysLeft} days to next period
         </div>
-        <div style={{ textAlign: "center", color: colors.muted, fontSize: 14, marginBottom: 24 }}>
+        <div style={{ textAlign: "center", color: colors.muted, fontSize: 14, marginBottom: 4 }}>
           at this pace you'll finish{" "}
           <span style={{ color: finishUp ? colors.positive : colors.negative }}>
             {Math.abs(pace.projectedEnd)} {finishUp ? "up" : "down"}
           </span>
+        </div>
+        <div style={{ textAlign: "center", color: colors.faint, fontSize: 12, marginBottom: 24 }}>
+          <span style={{ fontFamily: mono }}>{captionBudgetPerDay}</span> kcal a day ·{" "}
+          <span style={{ fontFamily: mono }}>{settings.tdee}</span> TDEE −{" "}
+          <span style={{ fontFamily: mono }}>{settings.deficit}</span> deficit
         </div>
 
         {/* Sparkline card */}
@@ -150,7 +156,7 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
 
         {/* Stat row */}
         <div style={{ display: "flex", gap: 10, marginBottom: 28 }}>
-          <StatBox label="Period budget" value={periodBudget} />
+          <StatBox label="Daily budget" value={dailyBudget} />
           <StatBox label="Consumed" value={consumed} />
           <StatBox label="Earned back" value={earned} accent />
         </div>
