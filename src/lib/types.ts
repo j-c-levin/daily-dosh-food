@@ -37,10 +37,12 @@ export interface Settings {
   anchorDate: string;      // onboarding date; defines the period grid
   periodLengthDays: number; // 14
   apiKey?: string;
-  model: string;           // default "claude-haiku-4-5"
+  model: string;           // default "claude-sonnet-4-6"
 }
 
-export const DEFAULT_MODEL = "claude-haiku-4-5";
+// Chosen via `npm run eval`: perfect type + kcal accuracy vs. Haiku
+// misjudging exercise burns (e.g. 480 kcal for 100 press-ups).
+export const DEFAULT_MODEL = "claude-sonnet-4-6";
 export const PERIOD_LENGTH_DAYS = 14;
 export const STORAGE_KEY = "daily-dosh-food:v1";
 
