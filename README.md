@@ -1,32 +1,36 @@
-# React + TypeScript + Vite
+# Daily Dosh Food
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A calorie/exercise ledger built on the same mental model as
+[Daily Dosh](https://github.com/j-c-levin/daily-dosh): a daily calorie budget
+accrues into a period balance, food logged as **debits**, exercise as
+**credits**. Finish a 14-day period positive and the deficit held. Fully
+static, no backend, deployed to GitHub Pages.
 
-Currently, two official plugins are available:
+## Develop
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev     # local dev server
+npm test        # vitest
+npm run check   # tsc --noEmit
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Deploy
+
+Push to `main` — GitHub Actions builds and publishes to GitHub Pages.
+
+## AI parsing
+
+Entry text ("chicken sandwich", "30 min run") is parsed into a calorie
+estimate by Claude. Bring your own Anthropic API key: paste it in Settings.
+It's stored only in the browser's `localStorage` and sent only to
+`api.anthropic.com` — the app has no server and no shared secret. Use a
+dedicated key with a low spend limit.
+
+Without a key (or if the call fails), entries fall back to a keyword parser
+with rough default amounts, so logging never blocks on the AI path.
+
+## More detail
+
+- [Design spec](docs/superpowers/specs/2026-07-18-daily-dosh-food-design.md)
+- [Implementation plan](docs/superpowers/plans/2026-07-18-daily-dosh-food.md)

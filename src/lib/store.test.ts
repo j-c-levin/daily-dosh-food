@@ -38,6 +38,22 @@ test("import rejects foreign JSON", () => {
   expect(importJSON(exportJSON(s))).toEqual(s);
 });
 
+test("exportJSON strips the API key so it never lands in a downloadable backup", () => {
+  const withKey = { ...settings, apiKey: "sk-ant-super-secret" };
+  const s = { ...emptyState(), settings: withKey };
+  const json = exportJSON(s);
+  expect(json).not.toContain("sk-ant-super-secret");
+  expect(json).not.toContain("apiKey");
+});
+
+test("exportJSON/importJSON round-trip equals the state minus apiKey", () => {
+  const withKey = { ...settings, apiKey: "sk-ant-super-secret" };
+  const s = { ...emptyState(), settings: withKey };
+  const { apiKey, ...settingsWithoutKey } = withKey;
+  void apiKey;
+  expect(importJSON(exportJSON(s))).toEqual({ ...s, settings: settingsWithoutKey });
+});
+
 test("hook: onboarding creates settings and first period, addEntry lands in current period", () => {
   const { result } = renderHook(() => useAppState());
   expect(result.current.state.settings).toBeUndefined();

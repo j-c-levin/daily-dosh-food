@@ -122,6 +122,26 @@ test("import replaces state on success", async () => {
   expect(hook.result.current.state.settings).toEqual(settingsWithStats);
 });
 
+test("import preserves the current in-browser API key when the backup has none", async () => {
+  // exportJSON strips the API key before writing a backup, so importing that
+  // backup back must not silently wipe out the key already saved in this
+  // browser — the current key should survive the import.
+  localStorage.clear();
+  const user = userEvent.setup();
+  const hook = renderHook(() => useAppState());
+  act(() => hook.result.current.completeOnboarding({ ...settings, apiKey: "sk-ant-current" }));
+  render(<SettingsScreen app={hook.result.current} onBack={vi.fn()} />);
+
+  // Simulate a backup exported (and thus key-stripped) before this key existed.
+  const backup = exportJSON({ schemaVersion: 1, settings: settingsWithStats, periods: [] });
+  const file = new File([backup], "backup.json", { type: "application/json" });
+  const input = screen.getByLabelText(/import/i);
+  await user.upload(input, file);
+
+  expect(hook.result.current.state.settings!.apiKey).toBe("sk-ant-current");
+  expect(hook.result.current.state.settings).toMatchObject(settingsWithStats);
+});
+
 test("import shows an alert and does not throw on invalid data", async () => {
   localStorage.clear();
   const user = userEvent.setup();

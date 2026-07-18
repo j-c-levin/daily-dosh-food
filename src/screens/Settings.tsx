@@ -164,7 +164,16 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
     try {
       const text = await file.text();
       const imported = importJSON(text);
-      app.replaceState(imported);
+      // exportJSON never writes the API key into a backup, so a normal
+      // export/import round-trip would otherwise silently delete the
+      // current in-browser key. Carry it forward unless the imported file
+      // itself specifies one (an explicit key in the import wins).
+      const currentApiKey = settings.apiKey;
+      const mergedSettings =
+        imported.settings && !imported.settings.apiKey && currentApiKey
+          ? { ...imported.settings, apiKey: currentApiKey }
+          : imported.settings;
+      app.replaceState({ ...imported, settings: mergedSettings });
     } catch (err) {
       alert(err instanceof Error ? err.message : "Import failed");
     }

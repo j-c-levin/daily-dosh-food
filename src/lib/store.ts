@@ -21,7 +21,12 @@ export function saveState(state: AppState, storage: Storage = localStorage): voi
 }
 
 export function exportJSON(state: AppState): string {
-  return JSON.stringify(state, null, 2);
+  // Never write the Anthropic API key into a downloadable backup — strip it
+  // from the exported settings entirely rather than serializing `undefined`.
+  if (!state.settings) return JSON.stringify(state, null, 2);
+  const { apiKey, ...safeSettings } = state.settings;
+  void apiKey;
+  return JSON.stringify({ ...state, settings: safeSettings }, null, 2);
 }
 
 export function importJSON(json: string): AppState {
