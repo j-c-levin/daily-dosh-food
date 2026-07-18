@@ -25,7 +25,7 @@ export function fallbackParse(text: string): ParsedEntry {
   };
 }
 
-const SCHEMA = {
+export const SCHEMA = {
   type: "object",
   properties: {
     label: { type: "string", description: "Short tidy description of what was logged" },
@@ -36,7 +36,7 @@ const SCHEMA = {
   additionalProperties: false,
 } as const;
 
-function systemPrompt(stats?: UserStats): string {
+export function systemPrompt(stats?: UserStats): string {
   const statsLine = stats
     ? ` The person is ${stats.sex}, ${stats.age} years old, ${stats.heightCm} cm, ${stats.weightKg} kg — scale exercise burn estimates to them.`
     : "";

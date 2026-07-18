@@ -25,3 +25,7 @@ dist-ssr
 
 # Controller scratch (not part of the shipped app)
 .superpowers/
+
+# Eval harness
+.env
+eval/results-*.json

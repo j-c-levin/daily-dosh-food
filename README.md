@@ -30,6 +30,24 @@ dedicated key with a low spend limit.
 Without a key (or if the call fails), entries fall back to a keyword parser
 with rough default amounts, so logging never blocks on the AI path.
 
+## Model eval
+
+`eval/` is a dev-only harness that compares Anthropic models on the app's
+real entry-parsing job — the same prompt, schema, and request shape as
+`parseEntry` in `src/lib/ai.ts` — measuring speed, output quality (type
+accuracy, kcal-in-range), and cost across a fixture set of ~18 sample log
+entries. It's not part of the built site or CI.
+
+```bash
+cp .env.example .env   # add your ANTHROPIC_API_KEY
+npm run eval
+```
+
+Defaults to comparing `claude-haiku-4-5`, `claude-sonnet-4-6`, and
+`claude-sonnet-5`. Override with a comma-separated `EVAL_MODELS` env var,
+e.g. `EVAL_MODELS=claude-haiku-4-5,claude-opus-4-8 npm run eval`. Results are
+printed as tables and written to `eval/results-<timestamp>.json` (gitignored).
+
 ## More detail
 
 - [Design spec](docs/superpowers/specs/2026-07-18-daily-dosh-food-design.md)
