@@ -8,6 +8,7 @@ import Sparkline from "../components/Sparkline";
 import StatBox from "../components/StatBox";
 import EntryList from "../components/EntryList";
 import Composer from "../components/Composer";
+import EditSheet from "../components/EditSheet";
 
 interface DashboardProps {
   app: ReturnType<typeof useAppState>;
@@ -19,6 +20,7 @@ interface DashboardProps {
 export default function Dashboard({ app, settings, onShowStamps, onShowSettings }: DashboardProps) {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Entry | null>(null);
 
   const period = app.current;
 
@@ -38,8 +40,8 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
     })();
   };
 
-  const handleSelect = (_entry: Entry) => {
-    // Editing is handled by Task 8's EditSheet; no-op for now.
+  const handleSelect = (entry: Entry) => {
+    setEditing(entry);
   };
 
   if (!period) {
@@ -169,6 +171,21 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
       )}
 
       <Composer onSubmit={handleSubmit} busy={busy} />
+
+      {editing && (
+        <EditSheet
+          entry={editing}
+          onSave={(patch) => {
+            app.updateEntry(editing.id, patch);
+            setEditing(null);
+          }}
+          onDelete={() => {
+            app.deleteEntry(editing.id);
+            setEditing(null);
+          }}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   );
 }
