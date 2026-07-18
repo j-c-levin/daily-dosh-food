@@ -9,6 +9,7 @@ vi.mock("../lib/ai", () => ({
 
 import Dashboard from "./Dashboard";
 import { useAppState } from "../lib/store";
+import { parseEntry, type ParsedEntry } from "../lib/ai";
 import type { Settings } from "../lib/types";
 
 const settings: Settings = {
@@ -53,4 +54,41 @@ test("composer logs an entry through parseEntry", async () => {
     <Dashboard app={hook.result.current} settings={settings} onShowStamps={vi.fn()} onShowSettings={vi.fn()} />
   );
   expect(hook.result.current.current!.entries[0]).toMatchObject({ label: "chicken sandwich", amount: 400 });
+});
+
+test("shows a pulsing pending row while parseEntry is in flight, then swaps it for the real entry", async () => {
+  let resolveParse!: (value: ParsedEntry) => void;
+  const pending = new Promise<ParsedEntry>((resolve) => {
+    resolveParse = resolve;
+  });
+  vi.mocked(parseEntry).mockReturnValueOnce(pending);
+
+  const scrollToSpy = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+
+  const user = userEvent.setup();
+  const { hook, view } = setup();
+  const { rerender } = view();
+
+  await user.click(screen.getByRole("button", { name: /add something/i }));
+  await user.type(screen.getByPlaceholderText(/press ups/i), "chicken sandwich");
+  await user.click(screen.getByRole("button", { name: /log it/i }));
+
+  // Composer collapses and the pending row appears before parseEntry resolves.
+  expect(screen.queryByPlaceholderText(/press ups/i)).not.toBeInTheDocument();
+  expect(screen.getByText("chicken sandwich")).toBeInTheDocument();
+  expect(screen.getByText(/estimating/i)).toBeInTheDocument();
+  expect(scrollToSpy).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }));
+
+  await act(async () => {
+    resolveParse({ label: "chicken sandwich", type: "debit", amount: 400, source: "ai" });
+    await pending;
+  });
+  rerender(
+    <Dashboard app={hook.result.current} settings={settings} onShowStamps={vi.fn()} onShowSettings={vi.fn()} />
+  );
+
+  expect(screen.queryByText(/estimating/i)).not.toBeInTheDocument();
+  expect(hook.result.current.current!.entries[0]).toMatchObject({ label: "chicken sandwich", amount: 400 });
+
+  scrollToSpy.mockRestore();
 });

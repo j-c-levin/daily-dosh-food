@@ -21,11 +21,21 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [editing, setEditing] = useState<Entry | null>(null);
+  // Local-only placeholder row shown while parseEntry is in flight — never
+  // persisted to the store, just what the entry list renders on top.
+  const [pendingText, setPendingText] = useState<string | null>(null);
 
   const period = app.current;
 
   const handleSubmit = (text: string) => {
     setBusy(true);
+    setPendingText(text);
+    try {
+      // Bring the pending row into view — jsdom doesn't implement scrollTo.
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      // ignore — non-essential UX polish
+    }
     void (async () => {
       try {
         const result = await parseEntry(text, settings);
@@ -36,6 +46,7 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
         }
       } finally {
         setBusy(false);
+        setPendingText(null);
       }
     })();
   };
@@ -146,7 +157,7 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
 
         {/* Entries */}
         <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Recent entries</div>
-        <EntryList entries={period.entries} onSelect={handleSelect} />
+        <EntryList entries={period.entries} onSelect={handleSelect} pendingText={pendingText} />
       </div>
 
       {toast && (

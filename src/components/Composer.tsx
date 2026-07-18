@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { colors, inputStyle, buttonPrimary, buttonGhost } from "../theme";
 
 interface ComposerProps {
@@ -9,14 +9,6 @@ interface ComposerProps {
 export default function Composer({ onSubmit, busy }: ComposerProps) {
   const [expanded, setExpanded] = useState(false);
   const [text, setText] = useState("");
-  const awaitingClose = useRef(false);
-
-  useEffect(() => {
-    if (!busy && awaitingClose.current) {
-      awaitingClose.current = false;
-      setExpanded(false);
-    }
-  }, [busy]);
 
   const cancel = () => {
     setExpanded(false);
@@ -26,9 +18,11 @@ export default function Composer({ onSubmit, busy }: ComposerProps) {
   const submit = () => {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
-    awaitingClose.current = true;
     onSubmit(trimmed);
+    // Collapse back to the floating button immediately — don't wait for the
+    // (~1.5-2.5s) AI parse to resolve, or the UI looks frozen on iPhone.
     setText("");
+    setExpanded(false);
   };
 
   if (!expanded) {
