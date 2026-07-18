@@ -8,7 +8,7 @@ test("computes TDEE live and completes with stats", async () => {
   const onComplete = vi.fn();
   render(<Onboarding onComplete={onComplete} />);
 
-  await user.click(screen.getByRole("button", { name: /male/i }));
+  await user.click(screen.getByRole("button", { name: /^male$/i }));
   await user.type(screen.getByLabelText(/age/i), "30");
   await user.type(screen.getByLabelText(/height/i), "180");
   await user.type(screen.getByLabelText(/weight/i), "80");

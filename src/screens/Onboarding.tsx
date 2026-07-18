@@ -114,9 +114,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                   cursor: "pointer",
                 }}
               >
-                {/* Distinct accessible names — "Female" contains "male" as a substring, which
-                    collides with the /male/i test query, so the second option is "Woman". */}
-                {s === "male" ? "Male" : "Woman"}
+                {s === "male" ? "Male" : "Female"}
               </button>
             ))}
           </div>
