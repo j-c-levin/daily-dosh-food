@@ -49,8 +49,14 @@ export default function EditSheet({ entry, onSave, onDelete, onClose }: EditShee
   const [type, setType] = useState<EntryType>(entry.type);
   const [amount, setAmount] = useState(String(entry.amount));
 
+  const numericAmount = Number(amount);
+  const isValid = label.trim() !== "" && amount !== "" && !Number.isNaN(numericAmount) && numericAmount >= 0;
+
   const handleSave = () => {
-    onSave({ label, type, amount: Number(amount) });
+    if (!isValid) {
+      return;
+    }
+    onSave({ label, type, amount: numericAmount });
   };
 
   return (
@@ -122,6 +128,7 @@ export default function EditSheet({ entry, onSave, onDelete, onClose }: EditShee
         <input
           id="edit-sheet-amount"
           type="number"
+          min="0"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           style={{ ...inputStyle, fontFamily: mono, margin: "6px 0 18px" }}
@@ -131,7 +138,7 @@ export default function EditSheet({ entry, onSave, onDelete, onClose }: EditShee
           <button type="button" onClick={onDelete} style={deleteButtonStyle}>
             Delete
           </button>
-          <button type="button" onClick={handleSave} style={saveButtonStyle}>
+          <button type="button" onClick={handleSave} disabled={!isValid} style={saveButtonStyle}>
             Save
           </button>
         </div>

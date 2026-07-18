@@ -174,6 +174,7 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
 
       {editing && (
         <EditSheet
+          key={editing.id}
           entry={editing}
           onSave={(patch) => {
             app.updateEntry(editing.id, patch);

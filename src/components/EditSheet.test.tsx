@@ -29,3 +29,12 @@ test("delete and overlay-close", async () => {
   await user.click(screen.getByTestId("sheet-overlay"));
   expect(onClose).toHaveBeenCalled();
 });
+
+test("clearing amount blocks save", async () => {
+  const user = userEvent.setup();
+  const onSave = vi.fn();
+  render(<EditSheet entry={entry} onSave={onSave} onDelete={vi.fn()} onClose={vi.fn()} />);
+  await user.clear(screen.getByLabelText(/amount/i));
+  await user.click(screen.getByRole("button", { name: /save/i }));
+  expect(onSave).not.toHaveBeenCalled();
+});
