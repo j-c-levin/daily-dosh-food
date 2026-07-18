@@ -1,32 +1,6 @@
-import type { ReactNode } from "react";
 import type { Period } from "../lib/types";
 import { balance, daysBetween, stampCaption, todayISO } from "../lib/period";
 import { colors, mono } from "../theme";
-
-// Recovery captions quote the words "overdrawn" / "in credit" verbatim (see
-// stampCaption in ../lib/period), which are also the exact badge labels on
-// the stamps above. Rendered as one contiguous text node, a caption would
-// duplicate-match any text query targeting the badges. Splitting those two
-// phrases across sibling <span>s keeps the caption's own visible text
-// identical while keeping it out of the badges' text-node matches.
-const CAPTION_COLLISIONS = /(overdrawn|in credit)/gi;
-
-function splitCaptionText(text: string): ReactNode[] {
-  const parts: ReactNode[] = [];
-  let lastIndex = 0;
-  let key = 0;
-  for (const match of text.matchAll(CAPTION_COLLISIONS)) {
-    const start = match.index ?? 0;
-    if (start > lastIndex) parts.push(text.slice(lastIndex, start));
-    const token = match[0];
-    const mid = Math.ceil(token.length / 2);
-    parts.push(<span key={key++}>{token.slice(0, mid)}</span>);
-    parts.push(<span key={key++}>{token.slice(mid)}</span>);
-    lastIndex = start + token.length;
-  }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
-  return parts;
-}
 
 interface StampsProps {
   periods: Period[];
@@ -62,7 +36,7 @@ export default function Stamps({ periods, onBack }: StampsProps) {
               <div style={{ marginTop: 20 }}>
                 {captions.map((caption, i) => (
                   <p key={i} style={{ color: colors.muted, fontSize: 13, lineHeight: 1.5 }}>
-                    {splitCaptionText(caption)}
+                    {caption}
                   </p>
                 ))}
               </div>
@@ -109,7 +83,7 @@ function Stamp({ period, index }: { period: Period; index: number }) {
         boxSizing: "border-box",
       }}
     >
-      <span style={{ fontFamily: mono, fontSize: 11, fontWeight: 700, color, textTransform: "uppercase" }}>
+      <span style={{ fontFamily: mono, fontSize: 11, fontWeight: 700, color }}>
         {isPositive ? "IN CREDIT" : "OVERDRAWN"}
       </span>
       <span style={{ fontSize: 11, color: colors.muted }}>

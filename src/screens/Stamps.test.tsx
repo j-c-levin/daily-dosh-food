@@ -9,8 +9,8 @@ const p = (n: number, outcome?: "positive" | "negative"): Period => ({
 
 test("renders sealed stamps and recovery caption", () => {
   render(<Stamps periods={[p(1, "positive"), p(2, "negative"), p(3, "positive"), p(4)]} onBack={() => {}} />);
-  expect(screen.getAllByText(/in credit/i)).toHaveLength(2);
-  expect(screen.getByText(/overdrawn/i)).toBeInTheDocument();
+  expect(screen.getAllByText("IN CREDIT")).toHaveLength(2);
+  expect(screen.getByText("OVERDRAWN")).toBeInTheDocument();
   expect(screen.getByText(/didn't spread/)).toBeInTheDocument();
 });
 
