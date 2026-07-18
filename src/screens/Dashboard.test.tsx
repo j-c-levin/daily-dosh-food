@@ -92,3 +92,21 @@ test("shows a pulsing pending row while parseEntry is in flight, then swaps it f
 
   scrollToSpy.mockRestore();
 });
+
+test("caption shows a this-period/next-period split when settings change mid-period", () => {
+  const { hook, view } = setup();
+  const { rerender } = view();
+
+  act(() => hook.result.current.updateSettings({ tdee: 2000 }));
+  rerender(
+    <Dashboard
+      app={hook.result.current}
+      settings={hook.result.current.state.settings!}
+      onShowStamps={vi.fn()}
+      onShowSettings={vi.fn()}
+    />
+  );
+
+  const caption = screen.getByText(/from next period/i);
+  expect(caption).toHaveTextContent("1800 kcal a day this period · 1500 from next period");
+});

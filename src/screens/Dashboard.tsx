@@ -66,7 +66,9 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
   const finishUp = pace.projectedEnd >= 0;
   const { consumed, earned } = entryTotals(period.entries);
   const dailyBudget = period.budgetPerDay;
-  const captionBudgetPerDay = settings.tdee - settings.deficit;
+  const captionBudgetPerDay = dailyBudget;
+  const liveBudgetPerDay = settings.tdee - settings.deficit;
+  const budgetChangedMidPeriod = captionBudgetPerDay !== liveBudgetPerDay;
   const sparklineValues = dailyBalances(period, app.today);
 
   return (
@@ -134,9 +136,18 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
           </span>
         </div>
         <div style={{ textAlign: "center", color: colors.faint, fontSize: 12, marginBottom: 24 }}>
-          <span style={{ fontFamily: mono }}>{captionBudgetPerDay}</span> kcal a day ·{" "}
-          <span style={{ fontFamily: mono }}>{settings.tdee}</span> TDEE −{" "}
-          <span style={{ fontFamily: mono }}>{settings.deficit}</span> deficit
+          {budgetChangedMidPeriod ? (
+            <>
+              <span style={{ fontFamily: mono }}>{captionBudgetPerDay}</span> kcal a day this period ·{" "}
+              <span style={{ fontFamily: mono }}>{liveBudgetPerDay}</span> from next period
+            </>
+          ) : (
+            <>
+              <span style={{ fontFamily: mono }}>{captionBudgetPerDay}</span> kcal a day ·{" "}
+              <span style={{ fontFamily: mono }}>{settings.tdee}</span> TDEE −{" "}
+              <span style={{ fontFamily: mono }}>{settings.deficit}</span> deficit
+            </>
+          )}
         </div>
 
         {/* Sparkline card */}
