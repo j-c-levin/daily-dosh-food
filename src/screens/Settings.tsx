@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Activity, Sex, UserStats } from "../lib/types";
+import type { Activity, Settings, Sex, UserStats } from "../lib/types";
 import { DEFAULT_MODEL } from "../lib/types";
 import { tdee, ACTIVITY_LABELS } from "../lib/tdee";
 import { exportJSON, importJSON } from "../lib/store";
@@ -40,21 +40,44 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null);
 
+  // Per-field dirty tracking. A field becomes dirty the moment the user edits it, and stays
+  // dirty until its card's Save clears it. This lets Save write only the fields the user
+  // actually touched (an unrelated card's Save can't clobber this card's in-progress draft),
+  // and lets the settings-identity resync below skip any field the user is mid-edit on (so a
+  // stale mount-time value can never overwrite freshly-imported settings on the next Save,
+  // since untouched fields are never included in Save's patch to begin with).
+  type DirtyField = "tdee" | "deficit" | "stats" | "apiKey" | "model";
+  const [dirty, setDirty] = useState<Set<DirtyField>>(new Set());
+  const markDirty = (field: DirtyField) =>
+    setDirty((prev) => (prev.has(field) ? prev : new Set(prev).add(field)));
+  const clearDirty = (fields: DirtyField[]) =>
+    setDirty((prev) => {
+      const next = new Set(prev);
+      for (const field of fields) next.delete(field);
+      return next;
+    });
+
   // Local form state above is only seeded at mount. If `settings` is replaced wholesale
-  // (e.g. via Import), resync every local field from the new object so a stale draft can't
-  // silently overwrite the freshly-imported settings on the next Save.
+  // (e.g. via Import), resync every *non-dirty* local field from the new object so a stale
+  // draft can't silently overwrite the freshly-imported settings on the next Save. Fields the
+  // user is actively editing are left alone — an import (or another card's Save, which also
+  // produces a new `settings` reference) must not clobber an in-progress, unsaved draft.
   useEffect(() => {
     if (!settings) return;
-    setTdeeInput(String(settings.tdee));
-    setDeficitInput(String(settings.deficit));
-    setSex(settings.stats?.sex);
-    setAge(settings.stats ? String(settings.stats.age) : "");
-    setHeightCm(settings.stats ? String(settings.stats.heightCm) : "");
-    setWeightKg(settings.stats ? String(settings.stats.weightKg) : "");
-    setActivity(settings.stats?.activity ?? "");
-    setApiKeyInput(settings.apiKey ?? "");
-    setModelInput(settings.model ?? DEFAULT_MODEL);
-    setTestResult(null);
+    if (!dirty.has("tdee")) setTdeeInput(String(settings.tdee));
+    if (!dirty.has("deficit")) setDeficitInput(String(settings.deficit));
+    if (!dirty.has("stats")) {
+      setSex(settings.stats?.sex);
+      setAge(settings.stats ? String(settings.stats.age) : "");
+      setHeightCm(settings.stats ? String(settings.stats.heightCm) : "");
+      setWeightKg(settings.stats ? String(settings.stats.weightKg) : "");
+      setActivity(settings.stats?.activity ?? "");
+    }
+    if (!dirty.has("apiKey")) {
+      setApiKeyInput(settings.apiKey ?? "");
+      setTestResult(null);
+    }
+    if (!dirty.has("model")) setModelInput(settings.model ?? DEFAULT_MODEL);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings]);
 
@@ -82,16 +105,20 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
     tdeeInput.trim() !== "" && tdeeNum > 0 && deficitInput.trim() !== "" && deficitNum >= 0;
 
   const handleUseRecalculated = () => {
-    if (recalculatedTdee !== undefined) setTdeeInput(String(recalculatedTdee));
+    if (recalculatedTdee !== undefined) {
+      setTdeeInput(String(recalculatedTdee));
+      markDirty("tdee");
+    }
   };
 
   const handleSaveBudget = () => {
     if (!budgetValid) return;
-    app.updateSettings({
-      tdee: tdeeNum,
-      deficit: deficitNum,
-      stats: draftStats ?? settings.stats,
-    });
+    const patch: Partial<Settings> = {};
+    if (dirty.has("tdee")) patch.tdee = tdeeNum;
+    if (dirty.has("deficit")) patch.deficit = deficitNum;
+    if (dirty.has("stats")) patch.stats = draftStats ?? settings.stats;
+    app.updateSettings(patch);
+    clearDirty(["tdee", "deficit", "stats"]);
   };
 
   const handleTestKey = async () => {
@@ -106,12 +133,17 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
   };
 
   const handleSaveAi = () => {
-    const trimmedKey = apiKeyInput.trim();
-    const trimmedModel = modelInput.trim();
-    app.updateSettings({
-      apiKey: trimmedKey === "" ? undefined : trimmedKey,
-      model: trimmedModel === "" ? DEFAULT_MODEL : trimmedModel,
-    });
+    const patch: Partial<Settings> = {};
+    if (dirty.has("apiKey")) {
+      const trimmedKey = apiKeyInput.trim();
+      patch.apiKey = trimmedKey === "" ? undefined : trimmedKey;
+    }
+    if (dirty.has("model")) {
+      const trimmedModel = modelInput.trim();
+      patch.model = trimmedModel === "" ? DEFAULT_MODEL : trimmedModel;
+    }
+    app.updateSettings(patch);
+    clearDirty(["apiKey", "model"]);
   };
 
   const handleExport = () => {
@@ -167,7 +199,10 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
             id="settings-tdee"
             type="number"
             value={tdeeInput}
-            onChange={(e) => setTdeeInput(e.target.value)}
+            onChange={(e) => {
+              setTdeeInput(e.target.value);
+              markDirty("tdee");
+            }}
             style={{ ...inputStyle, fontFamily: mono, margin: "6px 0 14px" }}
           />
 
@@ -178,7 +213,10 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
             id="settings-deficit"
             type="number"
             value={deficitInput}
-            onChange={(e) => setDeficitInput(e.target.value)}
+            onChange={(e) => {
+              setDeficitInput(e.target.value);
+              markDirty("deficit");
+            }}
             style={{ ...inputStyle, fontFamily: mono, margin: "6px 0 0" }}
           />
 
@@ -200,7 +238,10 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
                       <button
                         key={s}
                         type="button"
-                        onClick={() => setSex(s)}
+                        onClick={() => {
+                          setSex(s);
+                          markDirty("stats");
+                        }}
                         style={{
                           flex: 1,
                           padding: "10px 0",
@@ -225,7 +266,10 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
                     id="settings-age"
                     type="number"
                     value={age}
-                    onChange={(e) => setAge(e.target.value)}
+                    onChange={(e) => {
+                      setAge(e.target.value);
+                      markDirty("stats");
+                    }}
                     style={{ ...inputStyle, fontFamily: mono, margin: "6px 0 14px" }}
                   />
 
@@ -236,7 +280,10 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
                     id="settings-height"
                     type="number"
                     value={heightCm}
-                    onChange={(e) => setHeightCm(e.target.value)}
+                    onChange={(e) => {
+                      setHeightCm(e.target.value);
+                      markDirty("stats");
+                    }}
                     style={{ ...inputStyle, fontFamily: mono, margin: "6px 0 14px" }}
                   />
 
@@ -247,7 +294,10 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
                     id="settings-weight"
                     type="number"
                     value={weightKg}
-                    onChange={(e) => setWeightKg(e.target.value)}
+                    onChange={(e) => {
+                      setWeightKg(e.target.value);
+                      markDirty("stats");
+                    }}
                     style={{ ...inputStyle, fontFamily: mono, margin: "6px 0 14px" }}
                   />
 
@@ -257,7 +307,10 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
                   <select
                     id="settings-activity"
                     value={activity}
-                    onChange={(e) => setActivity(e.target.value as Activity)}
+                    onChange={(e) => {
+                      setActivity(e.target.value as Activity);
+                      markDirty("stats");
+                    }}
                     style={{ ...inputStyle, margin: "6px 0 0" }}
                   >
                     <option value="" disabled>
@@ -325,6 +378,7 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
             onChange={(e) => {
               setApiKeyInput(e.target.value);
               setTestResult(null);
+              markDirty("apiKey");
             }}
             style={{ ...inputStyle, margin: "6px 0 14px" }}
           />
@@ -336,7 +390,10 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
             id="settings-model"
             type="text"
             value={modelInput}
-            onChange={(e) => setModelInput(e.target.value)}
+            onChange={(e) => {
+              setModelInput(e.target.value);
+              markDirty("model");
+            }}
             placeholder={DEFAULT_MODEL}
             style={{ ...inputStyle, fontFamily: mono, margin: "6px 0 14px" }}
           />

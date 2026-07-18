@@ -177,6 +177,28 @@ test("saving budget after import uses the resynced (imported) values, not stale 
   expect(hook.result.current.state.settings!.tdee).toBe(2600);
 });
 
+test("an unsaved API key draft survives an unrelated Budget save", async () => {
+  // Reviewer regression: `updateSettings` returns a new `settings` object on every call, and
+  // the import-resync effect used to resync ALL local fields on any settings-identity change —
+  // so saving the Budget card discarded an unsaved draft in the AI card. Per-field dirty
+  // tracking means Save only writes the fields the user touched in that card, and the resync
+  // effect only touches non-dirty fields, so an in-progress apiKey draft must survive a Budget
+  // save untouched. As in the import test above, this harness's `render()` and `renderHook()`
+  // are decoupled trees, so `rerender` simulates the App.tsx parent re-render that flows the
+  // post-Save `settings` object (a fresh reference) back into SettingsScreen in production.
+  localStorage.clear();
+  const user = userEvent.setup();
+  const hook = renderHook(() => useAppState());
+  act(() => hook.result.current.completeOnboarding(settings));
+  const { rerender } = render(<SettingsScreen app={hook.result.current} onBack={vi.fn()} />);
+
+  await user.type(screen.getByLabelText(/api key/i), "sk-ant-draft");
+  await user.click(screen.getByRole("button", { name: /^save$/i }));
+  rerender(<SettingsScreen app={hook.result.current} onBack={vi.fn()} />);
+
+  expect(screen.getByLabelText(/api key/i)).toHaveValue("sk-ant-draft");
+});
+
 test("back button calls onBack", async () => {
   localStorage.clear();
   const user = userEvent.setup();
