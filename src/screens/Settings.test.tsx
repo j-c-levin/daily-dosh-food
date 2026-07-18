@@ -153,6 +153,30 @@ test("reset asks for confirmation and only resets when confirmed", async () => {
   expect(hook.result.current.state.settings).toBeUndefined();
 });
 
+test("saving budget after import uses the resynced (imported) values, not stale pre-import ones", async () => {
+  // In the real app, App.tsx re-renders SettingsScreen with a fresh `app` prop whenever
+  // useAppState's state changes (they share a render tree). This harness renders
+  // SettingsScreen against a decoupled `renderHook` instance, so we simulate that parent
+  // re-render explicitly via `rerender` once the import has updated the hook's state.
+  localStorage.clear();
+  const user = userEvent.setup();
+  const hook = renderHook(() => useAppState());
+  act(() => hook.result.current.completeOnboarding(settings));
+  const { rerender } = render(<SettingsScreen app={hook.result.current} onBack={vi.fn()} />);
+
+  const importedSettings: Settings = { ...settings, tdee: 2600, deficit: 400 };
+  const backup = exportJSON({ schemaVersion: 1, settings: importedSettings, periods: [] });
+  const file = new File([backup], "backup.json", { type: "application/json" });
+  const input = screen.getByLabelText(/import/i);
+  await user.upload(input, file);
+
+  expect(hook.result.current.state.settings!.tdee).toBe(2600);
+  rerender(<SettingsScreen app={hook.result.current} onBack={vi.fn()} />);
+
+  await user.click(screen.getByRole("button", { name: /^save$/i }));
+  expect(hook.result.current.state.settings!.tdee).toBe(2600);
+});
+
 test("back button calls onBack", async () => {
   localStorage.clear();
   const user = userEvent.setup();

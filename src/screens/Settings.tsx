@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Activity, Sex, UserStats } from "../lib/types";
 import { DEFAULT_MODEL } from "../lib/types";
 import { tdee, ACTIVITY_LABELS } from "../lib/tdee";
@@ -40,6 +40,24 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null);
 
+  // Local form state above is only seeded at mount. If `settings` is replaced wholesale
+  // (e.g. via Import), resync every local field from the new object so a stale draft can't
+  // silently overwrite the freshly-imported settings on the next Save.
+  useEffect(() => {
+    if (!settings) return;
+    setTdeeInput(String(settings.tdee));
+    setDeficitInput(String(settings.deficit));
+    setSex(settings.stats?.sex);
+    setAge(settings.stats ? String(settings.stats.age) : "");
+    setHeightCm(settings.stats ? String(settings.stats.heightCm) : "");
+    setWeightKg(settings.stats ? String(settings.stats.weightKg) : "");
+    setActivity(settings.stats?.activity ?? "");
+    setApiKeyInput(settings.apiKey ?? "");
+    setModelInput(settings.model ?? DEFAULT_MODEL);
+    setTestResult(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]);
+
   if (!settings) return null;
 
   const ageNum = Number(age);
@@ -80,7 +98,7 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
     setTesting(true);
     setTestResult(null);
     try {
-      const result = await testApiKey(apiKeyInput, modelInput.trim() || DEFAULT_MODEL);
+      const result = await testApiKey(apiKeyInput.trim(), modelInput.trim() || DEFAULT_MODEL);
       setTestResult(result);
     } finally {
       setTesting(false);
@@ -88,9 +106,11 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
   };
 
   const handleSaveAi = () => {
+    const trimmedKey = apiKeyInput.trim();
+    const trimmedModel = modelInput.trim();
     app.updateSettings({
-      apiKey: apiKeyInput.trim() === "" ? undefined : apiKeyInput,
-      model: modelInput.trim() === "" ? DEFAULT_MODEL : modelInput,
+      apiKey: trimmedKey === "" ? undefined : trimmedKey,
+      model: trimmedModel === "" ? DEFAULT_MODEL : trimmedModel,
     });
   };
 
