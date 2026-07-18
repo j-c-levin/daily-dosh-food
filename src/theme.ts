@@ -21,7 +21,7 @@ export const cardStyle: CSSProperties = { background: colors.card, borderRadius:
 export const inputStyle: CSSProperties = {
   width: "100%", boxSizing: "border-box", background: colors.bg,
   border: `1px solid ${colors.inputBorder}`, borderRadius: 8,
-  padding: "10px 12px", color: colors.text, fontSize: 14, outline: "none",
+  padding: "10px 12px", color: colors.text, fontSize: 16, outline: "none",
 };
 
 export const labelStyle: CSSProperties = { fontSize: 12, color: colors.muted };
