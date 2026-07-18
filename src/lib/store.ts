@@ -75,7 +75,23 @@ export function useAppState() {
     completeOnboarding: (settings: Settings) =>
       update((s) => rollover({ ...s, settings }, today)),
     updateSettings: (patch: Partial<Settings>) =>
-      update((s) => (s.settings ? { ...s, settings: { ...s.settings, ...patch } } : s)),
+      update((s) => {
+        if (!s.settings) return s;
+        const settings = { ...s.settings, ...patch };
+        const idx = s.periods.length - 1;
+        const last = s.periods[idx];
+        const budgetNow = settings.tdee - settings.deficit;
+        // Budget changes take effect immediately on the current (unsealed) period —
+        // rewrite its budgetPerDay snapshot so accrual/balance/pace/sparkline
+        // retroactively recompute from the period's start date. Sealed periods
+        // (stamps) are immutable history and are never touched here.
+        if (last && !last.outcome && last.budgetPerDay !== budgetNow) {
+          const periods = [...s.periods];
+          periods[idx] = { ...last, budgetPerDay: budgetNow };
+          return { ...s, settings, periods };
+        }
+        return { ...s, settings };
+      }),
     addEntry: (parsed: ParsedEntry | Omit<Entry, "id" | "date">) =>
       mutateCurrent((entries) => [
         { id: crypto.randomUUID(), date: today, label: parsed.label, type: parsed.type, amount: parsed.amount, source: parsed.source },

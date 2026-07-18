@@ -1,7 +1,7 @@
 import { renderHook, act } from "@testing-library/react";
 import { loadState, saveState, exportJSON, importJSON, useAppState } from "./store";
 import { STORAGE_KEY, emptyState } from "./types";
-import type { Settings } from "./types";
+import type { AppState, Period, Settings } from "./types";
 
 const settings: Settings = {
   tdee: 2300, deficit: 500, anchorDate: "2026-07-01", periodLengthDays: 14, model: "claude-haiku-4-5",
@@ -64,6 +64,36 @@ test("hook: onboarding creates settings and first period, addEntry lands in curr
   expect(result.current.current!.entries[0].date).toBe(result.current.today);
   // persisted
   expect(loadState().periods[0].entries).toHaveLength(1);
+});
+
+test("hook: updateSettings rewrites the current period's budget immediately; sealed periods stay untouched", () => {
+  const { result } = renderHook(() => useAppState());
+  act(() => result.current.completeOnboarding(settings));
+
+  act(() => result.current.updateSettings({ deficit: 300 }));
+  expect(result.current.current!.budgetPerDay).toBe(settings.tdee - 300);
+
+  const sealed: Period = {
+    id: "sealed-1",
+    startDate: "2026-06-17",
+    endDate: "2026-06-30",
+    budgetPerDay: 1700,
+    entries: [],
+    outcome: "positive",
+  };
+  const open: Period = {
+    id: "open-1",
+    startDate: "2026-07-01",
+    endDate: "2026-07-14",
+    budgetPerDay: 1800,
+    entries: [],
+  };
+  const imported: AppState = { schemaVersion: 1, settings, periods: [sealed, open] };
+  act(() => result.current.replaceState(imported));
+
+  act(() => result.current.updateSettings({ deficit: 300 }));
+  expect(result.current.state.periods[0]).toMatchObject({ budgetPerDay: 1700, outcome: "positive" });
+  expect(result.current.current!.budgetPerDay).toBe(settings.tdee - 300);
 });
 
 test("hook: updateEntry and deleteEntry", () => {

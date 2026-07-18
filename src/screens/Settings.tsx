@@ -368,7 +368,8 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
             Save
           </button>
           <div style={{ marginTop: 10, fontSize: 12, color: colors.faint }}>
-            Changes apply from your next period — the current period keeps its budget snapshot.
+            Changes apply immediately to the current period — sealed stamps keep the rules they
+            were played under.
           </div>
         </div>
 

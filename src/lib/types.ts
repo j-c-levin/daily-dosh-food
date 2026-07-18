@@ -14,7 +14,7 @@ export interface Period {
   id: string;
   startDate: string;     // inclusive
   endDate: string;       // inclusive (start + 13 for 14-day periods)
-  budgetPerDay: number;  // snapshot at period creation
+  budgetPerDay: number;  // snapshot, rewritten immediately on settings changes until sealed
   entries: Entry[];
   outcome?: "positive" | "negative"; // set when sealed
 }

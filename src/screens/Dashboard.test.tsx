@@ -10,7 +10,7 @@ vi.mock("../lib/ai", () => ({
 import Dashboard from "./Dashboard";
 import { useAppState } from "../lib/store";
 import { parseEntry, type ParsedEntry } from "../lib/ai";
-import type { Settings } from "../lib/types";
+import type { Period, Settings } from "../lib/types";
 
 const settings: Settings = {
   tdee: 2300, deficit: 500, anchorDate: "2026-07-01", periodLengthDays: 14, model: "claude-haiku-4-5", apiKey: "k",
@@ -93,11 +93,25 @@ test("shows a pulsing pending row while parseEntry is in flight, then swaps it f
   scrollToSpy.mockRestore();
 });
 
-test("caption shows a this-period/next-period split when settings change mid-period", () => {
+test("caption shows a this-period/next-period split when an imported backup's period budget diverges from settings", () => {
+  // updateSettings now self-heals the current period's budget immediately, so mid-period
+  // divergence can no longer arise from the Settings save path. It's still reachable via
+  // an imported backup whose open period predates a settings change made elsewhere —
+  // exercise that path instead to keep this caption branch covered.
   const { hook, view } = setup();
   const { rerender } = view();
 
-  act(() => hook.result.current.updateSettings({ tdee: 2000 }));
+  const importedSettings: Settings = { ...settings, tdee: 2000 };
+  const openPeriod: Period = {
+    id: "open-1",
+    startDate: hook.result.current.current!.startDate,
+    endDate: hook.result.current.current!.endDate,
+    budgetPerDay: 1800,
+    entries: [],
+  };
+  act(() =>
+    hook.result.current.replaceState({ schemaVersion: 1, settings: importedSettings, periods: [openPeriod] })
+  );
   rerender(
     <Dashboard
       app={hook.result.current}
