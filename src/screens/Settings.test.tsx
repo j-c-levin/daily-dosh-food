@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderHook, act } from "@testing-library/react";
 import { vi } from "vitest";
@@ -119,7 +119,9 @@ test("import replaces state on success", async () => {
   const input = screen.getByLabelText(/import/i);
   await user.upload(input, file);
 
-  expect(hook.result.current.state.settings).toEqual(settingsWithStats);
+  await waitFor(() => {
+    expect(hook.result.current.state.settings).toEqual(settingsWithStats);
+  });
 });
 
 test("import preserves the current in-browser API key when the backup has none", async () => {
@@ -138,8 +140,10 @@ test("import preserves the current in-browser API key when the backup has none",
   const input = screen.getByLabelText(/import/i);
   await user.upload(input, file);
 
-  expect(hook.result.current.state.settings!.apiKey).toBe("sk-ant-current");
-  expect(hook.result.current.state.settings).toMatchObject(settingsWithStats);
+  await waitFor(() => {
+    expect(hook.result.current.state.settings!.apiKey).toBe("sk-ant-current");
+    expect(hook.result.current.state.settings).toMatchObject(settingsWithStats);
+  });
 });
 
 test("import shows an alert and does not throw on invalid data", async () => {
@@ -154,7 +158,9 @@ test("import shows an alert and does not throw on invalid data", async () => {
   const input = screen.getByLabelText(/import/i);
   await user.upload(input, file);
 
-  expect(alertSpy).toHaveBeenCalled();
+  await waitFor(() => {
+    expect(alertSpy).toHaveBeenCalled();
+  });
 });
 
 test("reset asks for confirmation and only resets when confirmed", async () => {
@@ -190,7 +196,9 @@ test("saving budget after import uses the resynced (imported) values, not stale 
   const input = screen.getByLabelText(/import/i);
   await user.upload(input, file);
 
-  expect(hook.result.current.state.settings!.tdee).toBe(2600);
+  await waitFor(() => {
+    expect(hook.result.current.state.settings!.tdee).toBe(2600);
+  });
   rerender(<SettingsScreen app={hook.result.current} onBack={vi.fn()} />);
 
   await user.click(screen.getByRole("button", { name: /^save$/i }));
