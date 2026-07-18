@@ -3,7 +3,7 @@ import type { Entry, Settings } from "../lib/types";
 import { balance, paceInfo, dailyBalances, entryTotals } from "../lib/period";
 import { parseEntry } from "../lib/ai";
 import type { useAppState } from "../lib/store";
-import { colors, mono } from "../theme";
+import { colors, mono, sans } from "../theme";
 import Sparkline from "../components/Sparkline";
 import StatBox from "../components/StatBox";
 import EntryList from "../components/EntryList";
@@ -58,7 +58,7 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
   const sparklineValues = dailyBalances(period, app.today);
 
   return (
-    <div style={{ minHeight: "100vh", background: colors.bg, color: colors.text, paddingBottom: 100 }}>
+    <div style={{ minHeight: "100vh", background: colors.bg, color: colors.text, fontFamily: sans, paddingBottom: 100 }}>
       <div style={{ maxWidth: 420, margin: "0 auto", padding: "24px 18px" }}>
         {/* Header */}
         <div
