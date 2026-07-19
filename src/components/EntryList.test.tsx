@@ -100,6 +100,22 @@ test("tapping a break opens the chip editor; picking renames, delete removes", (
   expect(onDelete).toHaveBeenCalledWith(expect.any(String));
 });
 
+test("tapping outside the open chip editor closes it", () => {
+  render(
+    <EntryList
+      entries={[mb("snack", "2026-07-03")]}
+      onSelect={() => {}}
+      today="2026-07-03"
+      daySummaries={{ "2026-07-03": { kcalLeftover: 100, sugarUsedG: 5 } }}
+    />
+  );
+  fireEvent.click(screen.getByRole("button", { name: "snack break" }));
+  expect(screen.getByRole("button", { name: "dinner" })).toBeInTheDocument();
+  fireEvent.click(document.body);
+  expect(screen.queryByRole("button", { name: "dinner" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "snack break" })).toBeInTheDocument();
+});
+
 test("keydown on an open chip doesn't bubble to the break row and close the editor", () => {
   render(
     <EntryList

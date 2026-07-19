@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { Entry, LedgerItem, MealName } from "../lib/types";
 import { isMealBreak } from "../lib/types";
 import { colors, mono } from "../theme";
@@ -48,6 +48,23 @@ function formatDate(iso: string): string {
 
 export default function EntryList({ entries, onSelect, pendingText, daySummaries, today, onRenameBreak, onDeleteBreak }: EntryListProps) {
   const [openBreakId, setOpenBreakId] = useState<string | null>(null);
+  const hasOpenBreak = openBreakId !== null;
+
+  // Design spec: the open chip editor collapses when tapping elsewhere (or a
+  // second tap on the row). The chips wrapper stops click propagation, so
+  // chip taps (pick/delete) never reach this listener — only outside taps
+  // (another row, the page background, or the open row itself, which drops
+  // its own click handler while open) do. Attaching in an effect — which
+  // runs after the render triggered by the opening click's state update, and
+  // after that click has finished dispatching — means the same click that
+  // opens the editor doesn't immediately close it.
+  useEffect(() => {
+    if (!hasOpenBreak) return;
+    const close = () => setOpenBreakId(null);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [hasOpenBreak]);
+
   const rows: ReactNode[] = [];
   let prevDate: string | null = null;
   // Divider grouping assumes entries are date-contiguous (same date never
@@ -88,21 +105,32 @@ export default function EntryList({ entries, onSelect, pendingText, daySummaries
       rows.push(
         <div
           key={entry.id}
-          role="button"
-          tabIndex={0}
+          // Open state: the chips inside are real <button>s, so the row
+          // itself must not also be an interactive control (no nested
+          // interactive controls) — role/tabIndex/onClick/onKeyDown are
+          // dropped entirely. Row-tap-to-close is handled by the document
+          // click listener above instead.
+          role={open ? undefined : "button"}
+          tabIndex={open ? undefined : 0}
           aria-label={`${entry.meal} break`}
-          onClick={() => setOpenBreakId(open ? null : entry.id)}
-          onKeyDown={(ev) => {
-            if (ev.key === "Enter" || ev.key === " ") {
-              ev.preventDefault();
-              setOpenBreakId(open ? null : entry.id);
-            }
-          }}
-          style={{ padding: "6px 16px", cursor: "pointer" }}
+          onClick={open ? undefined : () => setOpenBreakId(entry.id)}
+          onKeyDown={
+            open
+              ? undefined
+              : (ev) => {
+                  if (ev.key === "Enter" || ev.key === " ") {
+                    ev.preventDefault();
+                    setOpenBreakId(entry.id);
+                  }
+                }
+          }
+          style={{ padding: "6px 16px", cursor: open ? "default" : "pointer" }}
         >
           {open ? (
             // stopPropagation so a chip tap (or Enter/Space on a focused chip)
-            // doesn't also toggle the row's own click/keydown handler.
+            // doesn't bubble to the document click listener and close the
+            // editor before the pick/delete handler below gets to run its
+            // own explicit close.
             <div onClick={(ev) => ev.stopPropagation()} onKeyDown={(ev) => ev.stopPropagation()}>
               <MealBreakChips
                 current={entry.meal}
