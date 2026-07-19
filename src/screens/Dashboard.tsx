@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Entry, Settings } from "../lib/types";
 import { balance, paceInfo, dailyBalances, entryTotals } from "../lib/period";
 import { parseEntry } from "../lib/ai";
+import { todayLedger } from "../lib/carryover";
 import type { useAppState } from "../lib/store";
 import { colors, mono, sans } from "../theme";
 import Sparkline from "../components/Sparkline";
@@ -9,6 +10,7 @@ import StatBox from "../components/StatBox";
 import EntryList from "../components/EntryList";
 import Composer from "../components/Composer";
 import EditSheet from "../components/EditSheet";
+import SugarGauge from "../components/SugarGauge";
 
 interface DashboardProps {
   app: ReturnType<typeof useAppState>;
@@ -59,8 +61,12 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
     return null;
   }
 
-  const bal = balance(period, app.today);
-  const isPositive = bal >= 0;
+  const calToday = todayLedger(app.state.periods, app.today, "calories")!;
+  const sugarToday = todayLedger(app.state.periods, app.today, "sugar")!;
+  const leftToday = Math.round(calToday.leftover);
+  const bonusToday = Math.round(calToday.bonus);
+  const isPositive = leftToday >= 0;
+  const bal = balance(period, app.today); // still shown, now as secondary "period pace"
   const pace = paceInfo(period, app.today);
   const paceIsPositive = pace.avgPerDay >= 0;
   const finishUp = pace.projectedEnd >= 0;
@@ -101,31 +107,38 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
           </div>
         </div>
 
-        {/* Main balance */}
+        {/* Today */}
         <div style={{ textAlign: "center", marginBottom: 8 }}>
           <div style={{ fontSize: 14, color: colors.muted, marginBottom: 8 }}>
-            {isPositive ? "In credit this period" : "Overdrawn this period"}
+            {isPositive ? "Left today" : "Over today"}
           </div>
-          <div
-            style={{
-              fontFamily: mono,
-              fontSize: 56,
-              fontWeight: 700,
-              color: isPositive ? colors.positive : colors.negative,
-              lineHeight: 1,
-            }}
-          >
+          <div style={{ fontFamily: mono, fontSize: 56, fontWeight: 700, color: isPositive ? colors.positive : colors.negative, lineHeight: 1 }}>
             {isPositive ? "+" : "−"}
-            {Math.abs(bal)}
+            {Math.abs(leftToday)}
           </div>
-          <div style={{ fontSize: 13, color: colors.faint, marginTop: 4 }}>kcal</div>
+          <div style={{ fontSize: 13, color: colors.faint, marginTop: 4 }}>
+            kcal
+            {bonusToday !== 0 && (
+              <>
+                {" · "}
+                {bonusToday > 0
+                  ? `includes +${bonusToday} fading bonus`
+                  : `−${Math.abs(bonusToday)} carried from yesterday`}
+              </>
+            )}
+          </div>
         </div>
 
+        <SugarGauge usedG={sugarToday.debits} allowanceG={sugarToday.base + sugarToday.bonus} />
+
         <div style={{ textAlign: "center", color: colors.muted, fontSize: 14, marginBottom: 4 }}>
-          averaging{" "}
+          period{" "}
+          <span style={{ color: bal >= 0 ? colors.positive : colors.negative }}>
+            {bal >= 0 ? "+" : "−"}{Math.abs(bal)}
+          </span>{" "}
+          · averaging{" "}
           <span style={{ color: colors.text }}>
-            {paceIsPositive ? "+" : "−"}
-            {Math.abs(pace.avgPerDay)} kcal
+            {paceIsPositive ? "+" : "−"}{Math.abs(pace.avgPerDay)} kcal
           </span>{" "}
           a day · {pace.daysLeft} days to next period
         </div>
