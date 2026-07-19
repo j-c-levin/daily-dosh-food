@@ -220,3 +220,20 @@ test("renders nothing (doesn't crash) when today precedes the only period's star
   expect(container.firstChild).toBeNull();
   expect(screen.queryByText(/left today/i)).not.toBeInTheDocument();
 });
+
+test("meal break button inserts a labelled break at the top of the ledger", async () => {
+  const user = userEvent.setup();
+  const { hook, view } = setup();
+  const { rerender } = view();
+
+  await user.click(screen.getByRole("button", { name: /meal break/i }));
+  await user.click(screen.getByRole("button", { name: "lunch" }));
+  rerender(
+    <Dashboard app={hook.result.current} settings={settings} onShowStamps={vi.fn()} onShowSettings={vi.fn()} />
+  );
+
+  expect(hook.result.current.current!.entries[0]).toMatchObject({ kind: "meal-break", meal: "lunch" });
+  expect(screen.getByRole("button", { name: "lunch break" })).toBeInTheDocument();
+  // Picker collapsed after picking.
+  expect(screen.queryByRole("button", { name: "breakfast" })).not.toBeInTheDocument();
+});

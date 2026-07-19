@@ -8,6 +8,7 @@ import { colors, mono, sans } from "../theme";
 import Sparkline from "../components/Sparkline";
 import StatBox from "../components/StatBox";
 import EntryList from "../components/EntryList";
+import MealBreakChips from "../components/MealBreakChips";
 import Composer from "../components/Composer";
 import EditSheet from "../components/EditSheet";
 import SugarGauge from "../components/SugarGauge";
@@ -26,6 +27,7 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
   // Local-only placeholder row shown while parseEntry is in flight — never
   // persisted to the store, just what the entry list renders on top.
   const [pendingText, setPendingText] = useState<string | null>(null);
+  const [pickingMeal, setPickingMeal] = useState(false);
 
   const period = app.current;
 
@@ -182,8 +184,32 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
         </div>
 
         {/* Entries */}
-        <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Recent entries</div>
-        <EntryList entries={period.entries} onSelect={handleSelect} pendingText={pendingText} daySummaries={daySummaries} today={app.today} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <span style={{ fontSize: 15, fontWeight: 600 }}>Recent entries</span>
+          <button
+            onClick={() => setPickingMeal((p) => !p)}
+            style={{
+              background: "none", border: `1px solid ${colors.inputBorder}`, color: colors.muted,
+              borderRadius: 8, padding: "4px 10px", fontSize: 12, cursor: "pointer",
+            }}
+          >
+            + Meal break
+          </button>
+        </div>
+        {pickingMeal && (
+          <div style={{ marginBottom: 12 }}>
+            <MealBreakChips onPick={(m) => { app.addMealBreak(m); setPickingMeal(false); }} />
+          </div>
+        )}
+        <EntryList
+          entries={period.entries}
+          onSelect={handleSelect}
+          pendingText={pendingText}
+          daySummaries={daySummaries}
+          today={app.today}
+          onRenameBreak={app.updateMealBreak}
+          onDeleteBreak={app.deleteEntry}
+        />
       </div>
 
       {toast && (
