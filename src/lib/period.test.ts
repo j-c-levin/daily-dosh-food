@@ -1,7 +1,7 @@
 import {
   addDays, daysBetween, makePeriod, daysElapsed, accruedBudget, entryTotals,
-  balance, paceInfo, rollover, currentPeriod, dailyBalances, stampCaption,
-  sugarConsumed,
+  balance, rollover, currentPeriod, dailyBalances, stampCaption,
+  sugarConsumed, dailySugarGrams,
 } from "./period";
 import type { AppState, Entry, Period } from "./types";
 
@@ -35,14 +35,6 @@ test("balance = accrued − debits + credits", () => {
   p.entries = [entry({ type: "debit", amount: 1500 }), entry({ type: "credit", amount: 200 })];
   expect(entryTotals(p.entries)).toEqual({ consumed: 1500, earned: 200 });
   expect(balance(p, "2026-07-01")).toBe(500); // 1800 − 1500 + 200
-});
-
-test("paceInfo averages and projects", () => {
-  const p = makePeriod("2026-07-01", 1800, 30, 14);
-  p.entries = [entry({ type: "debit", amount: 3000, date: "2026-07-01" })];
-  // day 2: accrued 3600, balance 600, avg 300/day, 12 days left → project 600 + 300×12
-  const pace = paceInfo(p, "2026-07-02");
-  expect(pace).toEqual({ avgPerDay: 300, daysLeft: 12, projectedEnd: 4200 });
 });
 
 test("rollover creates first period from anchor", () => {
@@ -100,4 +92,15 @@ test("sugarConsumed sums debit sugarG, treating unknown as 0 and ignoring credit
     entry({ type: "debit" }),                    // unknown → 0
     entry({ type: "credit", sugarG: 99 }),       // credits never count
   ])).toBe(12);
+});
+
+test("dailySugarGrams gives per-day grams, unknown sugarG counts 0", () => {
+  const p = makePeriod("2026-07-01", 1000, 30, 14);
+  p.entries = [
+    entry({ sugarG: 30, date: "2026-07-01" }),
+    entry({ date: "2026-07-01" }),              // unknown → 0
+    entry({ sugarG: 12, date: "2026-07-03" }),
+    entry({ type: "credit", sugarG: 9, date: "2026-07-03" }), // credits never count
+  ];
+  expect(dailySugarGrams(p, "2026-07-03")).toEqual([30, 0, 12]);
 });

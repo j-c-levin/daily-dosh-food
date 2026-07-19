@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Entry, Settings } from "../lib/types";
-import { balance, paceInfo, dailyBalances, entryTotals } from "../lib/period";
+import { daysElapsed, daysBetween, dailyBalances, dailySugarGrams, entryTotals, sugarConsumed } from "../lib/period";
 import { parseEntry } from "../lib/ai";
 import { computeLedger } from "../lib/carryover";
 import type { useAppState } from "../lib/store";
@@ -75,16 +75,16 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
   const leftToday = Math.round(calToday.leftover);
   const bonusToday = Math.round(calToday.bonus);
   const isPositive = leftToday >= 0;
-  const bal = balance(period, app.today); // still shown, now as secondary "period pace"
-  const pace = paceInfo(period, app.today);
-  const paceIsPositive = pace.avgPerDay >= 0;
-  const finishUp = pace.projectedEnd >= 0;
   const { consumed, earned } = entryTotals(period.entries);
   const dailyBudget = period.budgetPerDay;
   const captionBudgetPerDay = dailyBudget;
   const liveBudgetPerDay = settings.tdee - settings.deficit;
   const budgetChangedMidPeriod = captionBudgetPerDay !== liveBudgetPerDay;
   const sparklineValues = dailyBalances(period, app.today);
+  const elapsed = Math.max(1, daysElapsed(period, app.today));
+  const avgKcal = Math.round(consumed / elapsed);
+  const avgSugar = Math.round(sugarConsumed(period.entries) / elapsed);
+  const daysLeft = Math.max(0, daysBetween(app.today, period.endDate));
 
   return (
     <div style={{ minHeight: "100vh", background: colors.bg, color: colors.text, fontFamily: sans, paddingBottom: 100 }}>
@@ -141,21 +141,8 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
         <SugarGauge usedG={sugarToday.debits} allowanceG={sugarToday.base + sugarToday.bonus} />
 
         <div style={{ textAlign: "center", color: colors.muted, fontSize: 14, marginBottom: 4 }}>
-          period{" "}
-          <span style={{ color: bal >= 0 ? colors.positive : colors.negative }}>
-            {bal >= 0 ? "+" : "−"}{Math.abs(bal)}
-          </span>{" "}
-          · averaging{" "}
-          <span style={{ color: colors.text }}>
-            {paceIsPositive ? "+" : "−"}{Math.abs(pace.avgPerDay)} kcal
-          </span>{" "}
-          a day · {pace.daysLeft} days to next period
-        </div>
-        <div style={{ textAlign: "center", color: colors.muted, fontSize: 14, marginBottom: 4 }}>
-          at this pace you'll finish{" "}
-          <span style={{ color: finishUp ? colors.positive : colors.negative }}>
-            {Math.abs(pace.projectedEnd)} {finishUp ? "up" : "down"}
-          </span>
+          eating <span style={{ color: colors.text }}>~{avgKcal} kcal</span> a day ·{" "}
+          <span style={{ color: colors.text }}>~{avgSugar}g sugar</span> a day · {daysLeft} days to next period
         </div>
         <div style={{ textAlign: "center", color: colors.faint, fontSize: 12, marginBottom: 24 }}>
           {budgetChangedMidPeriod ? (
@@ -184,7 +171,7 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
             alignItems: "flex-end",
           }}
         >
-          <Sparkline values={sparklineValues} />
+          <Sparkline values={sparklineValues} secondary={dailySugarGrams(period, app.today)} />
         </div>
 
         {/* Stat row */}

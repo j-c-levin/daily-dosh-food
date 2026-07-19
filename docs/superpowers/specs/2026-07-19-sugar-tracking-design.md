@@ -174,6 +174,25 @@ Plus: migration v1→v2, `sugarLevel` thresholds, sugar stamp outcome at seal.
   UI does not flag this in v1 (acceptable: unknowns are mostly legacy and
   fallback entries).
 
+## Amendment (2026-07-19, post-launch): daily averages + sugar sparkline
+
+User feedback: the period pace/projection lines ("period +1881 · averaging
++941 kcal a day … at this pace you'll finish 13173 up") are not useful
+day-to-day; daily intake is.
+
+- The dashboard's secondary line becomes:
+  `eating ~{X} kcal a day · ~{Y}g sugar a day · {N} days to next period`
+  where X = period debits ÷ elapsed days (food only — exercise is NOT
+  netted; it stays visible in the Earned back stat box), Y = period sugar
+  grams ÷ elapsed days, N as before. The period balance and the projection
+  sentence are removed from the dashboard entirely — the stamp still judges
+  the period on full totals at seal. `paceInfo` becomes dead code and is
+  deleted.
+- The sparkline gains a second, independently-scaled line: **grams of free
+  sugars eaten per day** (not cumulative), colored sugar-amber (#E0B156).
+  The existing calorie running-balance line is unchanged. New pure helper
+  `dailySugarGrams(period, today): number[]` in period.ts.
+
 ## Out of scope (v1)
 
 - Weekly taper / ratcheting sugar budget (designed-for, not built).
