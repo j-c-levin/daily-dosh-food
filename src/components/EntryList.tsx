@@ -101,8 +101,9 @@ export default function EntryList({ entries, onSelect, pendingText, daySummaries
           style={{ padding: "6px 16px", cursor: "pointer" }}
         >
           {open ? (
-            // stopPropagation so a chip tap doesn't also toggle the row.
-            <div onClick={(ev) => ev.stopPropagation()}>
+            // stopPropagation so a chip tap (or Enter/Space on a focused chip)
+            // doesn't also toggle the row's own click/keydown handler.
+            <div onClick={(ev) => ev.stopPropagation()} onKeyDown={(ev) => ev.stopPropagation()}>
               <MealBreakChips
                 current={entry.meal}
                 onPick={(m) => { onRenameBreak?.(entry.id, m); setOpenBreakId(null); }}

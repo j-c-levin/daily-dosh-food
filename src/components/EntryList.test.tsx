@@ -99,3 +99,19 @@ test("tapping a break opens the chip editor; picking renames, delete removes", (
   fireEvent.click(screen.getByRole("button", { name: "delete" }));
   expect(onDelete).toHaveBeenCalledWith(expect.any(String));
 });
+
+test("keydown on an open chip doesn't bubble to the break row and close the editor", () => {
+  render(
+    <EntryList
+      entries={[mb("snack", "2026-07-03")]}
+      onSelect={() => {}}
+      today="2026-07-03"
+      daySummaries={{ "2026-07-03": { kcalLeftover: 100, sugarUsedG: 5 } }}
+    />
+  );
+  fireEvent.click(screen.getByRole("button", { name: "snack break" }));
+  fireEvent.keyDown(screen.getByRole("button", { name: "dinner" }), { key: "Enter" });
+  // Still open: the row's own keydown handler (which would toggle it closed)
+  // must not have fired.
+  expect(screen.getByRole("button", { name: "dinner" })).toBeInTheDocument();
+});

@@ -11,6 +11,7 @@ interface MealBreakChipsProps {
 const chip: CSSProperties = {
   background: "none", border: `1px solid ${colors.inputBorder}`, color: colors.muted,
   borderRadius: 6, padding: "4px 8px", fontSize: 11, cursor: "pointer",
+  textTransform: "uppercase", letterSpacing: 0.5,
 };
 
 export default function MealBreakChips({ current, onPick, onDelete }: MealBreakChipsProps) {
