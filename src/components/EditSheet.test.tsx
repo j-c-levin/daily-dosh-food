@@ -38,3 +38,20 @@ test("clearing amount blocks save", async () => {
   await user.click(screen.getByRole("button", { name: /save/i }));
   expect(onSave).not.toHaveBeenCalled();
 });
+
+test("saving a debit passes the sugar grams through", async () => {
+  const onSave = vi.fn();
+  render(<EditSheet entry={{ id: "1", label: "flapjack", type: "debit", amount: 300, sugarG: 18, date: "2026-07-19", source: "ai" }} onSave={onSave} onDelete={() => {}} onClose={() => {}} />);
+  const sugar = screen.getByLabelText(/sugar/i);
+  await userEvent.clear(sugar);
+  await userEvent.type(sugar, "25");
+  await userEvent.click(screen.getByText("Save"));
+  expect(onSave).toHaveBeenCalledWith({ label: "flapjack", type: "debit", amount: 300, sugarG: 25 });
+});
+
+test("empty sugar field saves as unknown (undefined)", async () => {
+  const onSave = vi.fn();
+  render(<EditSheet entry={{ id: "1", label: "stew", type: "debit", amount: 400, date: "2026-07-19", source: "ai" }} onSave={onSave} onDelete={() => {}} onClose={() => {}} />);
+  await userEvent.click(screen.getByText("Save"));
+  expect(onSave).toHaveBeenCalledWith({ label: "stew", type: "debit", amount: 400, sugarG: undefined });
+});

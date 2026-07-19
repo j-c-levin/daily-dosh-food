@@ -1,5 +1,6 @@
 import type { Entry } from "../lib/types";
 import { colors, mono } from "../theme";
+import { sugarLevel, SUGAR_LEVEL_COLORS } from "../lib/sugar";
 
 interface EntryListProps {
   entries: Entry[];
@@ -84,17 +85,31 @@ export default function EntryList({ entries, onSelect, pendingText }: EntryListP
               {formatDate(entry.date)} · {sourceCaption(entry.source)}
             </div>
           </div>
-          <span
-            style={{
-              fontFamily: mono,
-              fontSize: 15,
-              fontWeight: 600,
-              color: entry.type === "credit" ? colors.positive : colors.negative,
-            }}
-          >
-            {entry.type === "credit" ? "+" : "−"}
-            {entry.amount}
-          </span>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            {entry.type === "debit" && entry.sugarG != null && (
+              <span
+                aria-label={`sugar level ${sugarLevel(entry.sugarG)}`}
+                style={{
+                  fontFamily: mono, fontSize: 11, fontWeight: 700,
+                  color: colors.bg, background: SUGAR_LEVEL_COLORS[sugarLevel(entry.sugarG)],
+                  borderRadius: 6, padding: "2px 6px", marginRight: 8,
+                }}
+              >
+                S{sugarLevel(entry.sugarG)}
+              </span>
+            )}
+            <span
+              style={{
+                fontFamily: mono,
+                fontSize: 15,
+                fontWeight: 600,
+                color: entry.type === "credit" ? colors.positive : colors.negative,
+              }}
+            >
+              {entry.type === "credit" ? "+" : "−"}
+              {entry.amount}
+            </span>
+          </div>
         </div>
       ))}
     </div>
