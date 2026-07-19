@@ -124,6 +124,11 @@ The daily number is forgiving; the fortnightly stamp tells the truth.
   and sparkline remain but as secondary "period pace" content, since they
   drive the stamp.
 - **EntryList:** small sugar-level chip on debit entries with known `sugarG`.
+- **EntryList day dividers:** a divider row marks each date change. Past
+  days carry that day's outcome from the carryover ledger — "finished
+  +130 kcal · 38g sugar". Today's divider is label-only ("Today"), since its
+  live numbers already headline the dashboard. Per-entry rows drop their own
+  date caption when dividers are active.
 - **EditSheet:** sugar grams field (numeric, optional).
 - **Settings:** sugar budget input alongside TDEE/deficit.
 - **Onboarding:** unchanged; sugar defaults to 30 g.
