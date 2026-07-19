@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
-import type { AppState, Entry, Period, Settings } from "./types";
-import { STORAGE_KEY, emptyState, DEFAULT_SUGAR_BUDGET_G } from "./types";
+import type { AppState, Entry, LedgerItem, Period, Settings } from "./types";
+import { STORAGE_KEY, emptyState, DEFAULT_SUGAR_BUDGET_G, isMealBreak } from "./types";
 import { currentPeriod, rollover, todayISO } from "./period";
 import type { ParsedEntry } from "./ai";
 
@@ -10,15 +10,17 @@ interface AppStateV1 {
   periods: Array<Omit<Period, "sugarBudgetPerDay" | "sugarOutcome">>;
 }
 
-// Returns a valid v2 state, or null if the blob is unrecognisable.
+// Returns a valid v3 state, or null if the blob is unrecognisable.
 export function migrate(parsed: unknown): AppState | null {
   const s = parsed as { schemaVersion?: unknown; periods?: unknown };
   if (!s || !Array.isArray(s.periods)) return null;
-  if (s.schemaVersion === 2) return parsed as AppState;
+  if (s.schemaVersion === 3) return parsed as AppState;
+  // v2 → v3 is identity: meal breaks are additive, existing entries are untouched.
+  if (s.schemaVersion === 2) return { ...(parsed as Omit<AppState, "schemaVersion">), schemaVersion: 3 };
   if (s.schemaVersion === 1) {
     const v1 = parsed as AppStateV1;
     return {
-      schemaVersion: 2,
+      schemaVersion: 3,
       settings: v1.settings ? { ...v1.settings, sugarBudget: DEFAULT_SUGAR_BUDGET_G } : undefined,
       periods: v1.periods.map((p) => ({ ...p, sugarBudgetPerDay: DEFAULT_SUGAR_BUDGET_G })),
     };
@@ -77,7 +79,7 @@ export function useAppState() {
     });
   }, []);
 
-  const mutateCurrent = (fn: (entries: Entry[]) => Entry[]) =>
+  const mutateCurrent = (fn: (items: LedgerItem[]) => LedgerItem[]) =>
     update((s) => {
       const periods = [...s.periods];
       const idx = periods.length - 1;
@@ -120,8 +122,8 @@ export function useAppState() {
         ...entries,
       ]),
     updateEntry: (id: string, patch: Partial<Pick<Entry, "label" | "type" | "amount" | "sugarG">>) =>
-      mutateCurrent((entries) => entries.map((e) => (e.id === id ? { ...e, ...patch } : e))),
-    deleteEntry: (id: string) => mutateCurrent((entries) => entries.filter((e) => e.id !== id)),
+      mutateCurrent((items) => items.map((e) => (!isMealBreak(e) && e.id === id ? { ...e, ...patch } : e))),
+    deleteEntry: (id: string) => mutateCurrent((items) => items.filter((e) => e.id !== id)),
     replaceState: (imported: AppState) => update(() => rollover(imported, today)),
     reset: () => update(() => emptyState()),
   };

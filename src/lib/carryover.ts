@@ -1,4 +1,5 @@
 import type { Period } from "./types";
+import { isMealBreak } from "./types";
 import { addDays, daysBetween } from "./period";
 
 // Decaying carryover: each day's unused surplus feeds the next three days at
@@ -31,6 +32,7 @@ export function computeLedger(periods: Period[], today: string, mode: LedgerMode
   const creditsByDate = new Map<string, number>();
   for (const p of periods) {
     for (const e of p.entries) {
+      if (isMealBreak(e)) continue;
       if (e.type === "debit") {
         const value = mode === "calories" ? e.amount : e.sugarG ?? 0;
         debitsByDate.set(e.date, (debitsByDate.get(e.date) ?? 0) + value);

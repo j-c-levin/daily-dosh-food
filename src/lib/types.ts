@@ -11,13 +11,32 @@ export interface Entry {
   source: EntrySource;
 }
 
+export const MEAL_NAMES = ["breakfast", "snack", "lunch", "dinner", "late night snack"] as const;
+export type MealName = (typeof MEAL_NAMES)[number];
+
+// A meal break is a marker row in the ledger, not food: it carries no amount
+// and must be skipped by every calorie/sugar summation.
+export interface MealBreak {
+  kind: "meal-break";
+  id: string;
+  meal: MealName;
+  date: string;          // ISO yyyy-mm-dd (local), same semantics as Entry.date
+}
+
+export type LedgerItem = Entry | MealBreak;
+
+// Entry has no `kind` field (so v2 data needed no rewrite) — presence of
+// `kind` is the discriminant.
+export const isMealBreak = (item: LedgerItem): item is MealBreak =>
+  "kind" in item && item.kind === "meal-break";
+
 export interface Period {
   id: string;
   startDate: string;     // inclusive
   endDate: string;       // inclusive (start + 13 for 14-day periods)
   budgetPerDay: number;  // snapshot, rewritten immediately on settings changes until sealed
   sugarBudgetPerDay: number; // snapshot, same rewrite rules as budgetPerDay
-  entries: Entry[];
+  entries: LedgerItem[];
   outcome?: "positive" | "negative"; // set when sealed
   sugarOutcome?: "under" | "over";   // set when sealed
 }
@@ -54,9 +73,9 @@ export const STORAGE_KEY = "daily-dosh-food:v1";
 export const DEFAULT_SUGAR_BUDGET_G = 30;
 
 export interface AppState {
-  schemaVersion: 2;
+  schemaVersion: 3;
   settings?: Settings;
   periods: Period[];
 }
 
-export const emptyState = (): AppState => ({ schemaVersion: 2, periods: [] });
+export const emptyState = (): AppState => ({ schemaVersion: 3, periods: [] });

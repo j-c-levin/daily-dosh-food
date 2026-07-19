@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import type { Entry } from "../lib/types";
+import type { Entry, LedgerItem } from "../lib/types";
+import { isMealBreak } from "../lib/types";
 import { colors, mono } from "../theme";
 import { sugarLevel, SUGAR_LEVEL_COLORS } from "../lib/sugar";
 
@@ -9,7 +10,7 @@ export interface DaySummary {
 }
 
 interface EntryListProps {
-  entries: Entry[];
+  entries: LedgerItem[];
   onSelect: (e: Entry) => void;
   // Raw text of an in-flight submission, shown as a placeholder row above
   // the real entries while parseEntry resolves. Not a persisted Entry.
@@ -43,12 +44,14 @@ function formatDate(iso: string): string {
 }
 
 export default function EntryList({ entries, onSelect, pendingText, daySummaries, today }: EntryListProps) {
+  // Temporary until the break-rendering task: hide meal breaks from the list.
+  const visible = entries.filter((i): i is Entry => !isMealBreak(i));
   const rows: ReactNode[] = [];
   let prevDate: string | null = null;
   // Divider grouping assumes entries are date-contiguous (same date never
   // reappears after a different date is seen): the store prepends today's
   // new entries, and EditSheet never lets a date be edited.
-  entries.forEach((entry, idx) => {
+  visible.forEach((entry, idx) => {
     if (daySummaries && entry.date !== prevDate) {
       const summary = daySummaries[entry.date];
       const isToday = entry.date === today;
@@ -94,8 +97,8 @@ export default function EntryList({ entries, onSelect, pendingText, daySummaries
         style={{
           padding: "14px 16px",
           borderBottom: daySummaries
-            ? (entries[idx + 1] && entries[idx + 1].date === entry.date ? `1px solid ${colors.divider}` : "none")
-            : (idx < entries.length - 1 ? `1px solid ${colors.divider}` : "none"),
+            ? (visible[idx + 1] && visible[idx + 1].date === entry.date ? `1px solid ${colors.divider}` : "none")
+            : (idx < visible.length - 1 ? `1px solid ${colors.divider}` : "none"),
           cursor: "pointer",
           display: "flex",
           justifyContent: "space-between",
@@ -145,7 +148,7 @@ export default function EntryList({ entries, onSelect, pendingText, daySummaries
           <div
             style={{
               padding: "14px 16px",
-              borderBottom: entries.length > 0 ? `1px solid ${colors.divider}` : "none",
+              borderBottom: visible.length > 0 ? `1px solid ${colors.divider}` : "none",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",

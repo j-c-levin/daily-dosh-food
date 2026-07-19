@@ -120,3 +120,16 @@ test("todayLedger returns the final day, or undefined with no periods", () => {
   const led = todayLedger([period([])], "2026-07-02", "calories");
   expect(led?.date).toBe("2026-07-02");
 });
+
+test("computeLedger ignores meal breaks in both modes", () => {
+  const period: Period = {
+    id: "p", startDate: "2026-07-01", endDate: "2026-07-14",
+    budgetPerDay: 1800, sugarBudgetPerDay: 30,
+    entries: [
+      { id: "e1", label: "toast", type: "debit", amount: 500, sugarG: 12, date: "2026-07-01", source: "manual" },
+      { kind: "meal-break", id: "b1", meal: "breakfast", date: "2026-07-01" },
+    ],
+  };
+  expect(computeLedger([period], "2026-07-01", "calories")[0].debits).toBe(500);
+  expect(computeLedger([period], "2026-07-01", "sugar")[0].debits).toBe(12);
+});

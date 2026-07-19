@@ -114,7 +114,7 @@ test("import replaces state on success", async () => {
   act(() => hook.result.current.completeOnboarding(settings));
   render(<SettingsScreen app={hook.result.current} onBack={vi.fn()} />);
 
-  const backup = exportJSON({ schemaVersion: 2, settings: settingsWithStats, periods: [] });
+  const backup = exportJSON({ schemaVersion: 3, settings: settingsWithStats, periods: [] });
   const file = new File([backup], "backup.json", { type: "application/json" });
   const input = screen.getByLabelText(/import/i);
   await user.upload(input, file);
@@ -135,7 +135,7 @@ test("import preserves the current in-browser API key when the backup has none",
   render(<SettingsScreen app={hook.result.current} onBack={vi.fn()} />);
 
   // Simulate a backup exported (and thus key-stripped) before this key existed.
-  const backup = exportJSON({ schemaVersion: 2, settings: settingsWithStats, periods: [] });
+  const backup = exportJSON({ schemaVersion: 3, settings: settingsWithStats, periods: [] });
   const file = new File([backup], "backup.json", { type: "application/json" });
   const input = screen.getByLabelText(/import/i);
   await user.upload(input, file);
@@ -191,7 +191,7 @@ test("saving budget after import uses the resynced (imported) values, not stale 
   const { rerender } = render(<SettingsScreen app={hook.result.current} onBack={vi.fn()} />);
 
   const importedSettings: Settings = { ...settings, tdee: 2600, deficit: 400 };
-  const backup = exportJSON({ schemaVersion: 2, settings: importedSettings, periods: [] });
+  const backup = exportJSON({ schemaVersion: 3, settings: importedSettings, periods: [] });
   const file = new File([backup], "backup.json", { type: "application/json" });
   const input = screen.getByLabelText(/import/i);
   await user.upload(input, file);
