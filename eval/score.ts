@@ -27,11 +27,13 @@ export interface ParsedResult {
   label: string;
   type: EntryType;
   amount: number;
+  sugarG: number;
 }
 
 export interface ScoreResult {
   typeCorrect: boolean;
   kcalInRange: boolean;
+  sugarInRange: boolean;
 }
 
 /** Score one successfully-parsed call against its fixture's expectations. */
@@ -39,7 +41,9 @@ export function scoreCall(parsed: ParsedResult, fixture: Fixture): ScoreResult {
   const typeCorrect = parsed.type === fixture.expectedType;
   const [lo, hi] = fixture.kcalRange;
   const kcalInRange = parsed.amount >= lo && parsed.amount <= hi;
-  return { typeCorrect, kcalInRange };
+  const [slo, shi] = fixture.sugarRange;
+  const sugarInRange = parsed.sugarG >= slo && parsed.sugarG <= shi;
+  return { typeCorrect, kcalInRange, sugarInRange };
 }
 
 /** One eval call, already scored (errors pre-marked with both flags false). */
@@ -50,6 +54,7 @@ export interface ScoredCall {
   error: boolean;
   typeCorrect: boolean;
   kcalInRange: boolean;
+  sugarInRange: boolean;
 }
 
 /** USD per million tokens. */
@@ -65,6 +70,7 @@ export interface ModelSummary {
   p95Ms: number;
   typeAccuracyPct: number;
   kcalInRangePct: number;
+  sugarInRangePct: number;
   totalCostUsd: number | null;
   costPer100Usd: number | null;
   costNote?: string;
@@ -77,6 +83,7 @@ export function summarize(calls: ScoredCall[], pricing: ModelPricing | null): Mo
   const msValues = calls.map((c) => c.ms);
   const typeAccuracyPct = n ? (calls.filter((c) => c.typeCorrect).length / n) * 100 : 0;
   const kcalInRangePct = n ? (calls.filter((c) => c.kcalInRange).length / n) * 100 : 0;
+  const sugarInRangePct = n ? (calls.filter((c) => c.sugarInRange).length / n) * 100 : 0;
 
   let totalCostUsd: number | null = null;
   let costPer100Usd: number | null = null;
@@ -98,6 +105,7 @@ export function summarize(calls: ScoredCall[], pricing: ModelPricing | null): Mo
     p95Ms: p95(msValues),
     typeAccuracyPct,
     kcalInRangePct,
+    sugarInRangePct,
     totalCostUsd,
     costPer100Usd,
     costNote,
