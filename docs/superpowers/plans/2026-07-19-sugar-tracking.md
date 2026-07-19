@@ -352,7 +352,7 @@ All numbers below are hand-derived from the kernels; keep them exactly.
 
 ```ts
 import { computeLedger, todayLedger } from "./carryover";
-import { makePeriod } from "./period";
+import { addDays, makePeriod } from "./period";
 import type { Entry, Period } from "./types";
 
 const entry = (over: Partial<Entry>): Entry => ({
@@ -443,11 +443,15 @@ test("entries with unknown sugarG count 0 in sugar mode", () => {
 });
 
 test("carryover crosses period boundaries", () => {
-  // P1 ends 07-14 with a 600 leftover on its final day; P2 (different budgets)
-  // starts 07-15 and receives 30% of it.
+  // P1 ends 07-14: days 1–13 each eat exactly their 1000 base (leftover 0),
+  // so no bonus compounds; day 14 eats 400 → leftover exactly 600. P2 (a
+  // different budget) starts 07-15 and receives 30% of that 600.
   const p1 = makePeriod("2026-07-01", 1000, 30, 14);
   p1.outcome = "positive";
-  p1.entries = [entry({ amount: 400, date: "2026-07-14" })];
+  p1.entries = [
+    ...Array.from({ length: 13 }, (_, i) => entry({ amount: 1000, date: addDays("2026-07-01", i) })),
+    entry({ amount: 400, date: "2026-07-14" }),
+  ];
   const p2 = makePeriod("2026-07-15", 2000, 30, 14);
   const led = computeLedger([p1, p2], "2026-07-15", "calories");
   const day15 = led[led.length - 1];
