@@ -3,14 +3,14 @@ import {
   balance, rollover, currentPeriod, dailyBalances, stampCaption,
   sugarConsumed, dailySugarGrams,
 } from "./period";
-import type { AppState, Entry, Period } from "./types";
+import type { AppState, Entry, LedgerItem, Period } from "./types";
 
 const entry = (over: Partial<Entry>): Entry => ({
   id: "x", label: "t", type: "debit", amount: 100, date: "2026-07-01", source: "manual", ...over,
 });
 
 const settingsState = (periods: Period[] = []): AppState => ({
-  schemaVersion: 2,
+  schemaVersion: 3,
   settings: { tdee: 2300, deficit: 500, sugarBudget: 30, anchorDate: "2026-07-01", periodLengthDays: 14, model: "claude-haiku-4-5" },
   periods,
 });
@@ -103,4 +103,14 @@ test("dailySugarGrams gives per-day grams, unknown sugarG counts 0", () => {
     entry({ type: "credit", sugarG: 9, date: "2026-07-03" }), // credits never count
   ];
   expect(dailySugarGrams(p, "2026-07-03")).toEqual([30, 0, 12]);
+});
+
+test("entryTotals and sugarConsumed ignore meal breaks", () => {
+  const items: LedgerItem[] = [
+    { id: "e1", label: "toast", type: "debit", amount: 300, sugarG: 10, date: "2026-07-01", source: "manual" },
+    { kind: "meal-break", id: "b1", meal: "lunch", date: "2026-07-01" },
+    { id: "e2", label: "run", type: "credit", amount: 200, date: "2026-07-01", source: "manual" },
+  ];
+  expect(entryTotals(items)).toEqual({ consumed: 300, earned: 200 });
+  expect(sugarConsumed(items)).toBe(10);
 });

@@ -1,7 +1,8 @@
 import { renderHook, act } from "@testing-library/react";
 import { loadState, saveState, exportJSON, importJSON, useAppState } from "./store";
+import { entryTotals } from "./period";
 import { STORAGE_KEY, emptyState } from "./types";
-import type { AppState, Period, Settings } from "./types";
+import type { AppState, MealBreak, Period, Settings } from "./types";
 
 const settings: Settings = {
   tdee: 2300, deficit: 500, sugarBudget: 30, anchorDate: "2026-07-01", periodLengthDays: 14, model: "claude-haiku-4-5",
@@ -90,7 +91,7 @@ test("hook: updateSettings rewrites the current period's budget immediately; sea
     sugarBudgetPerDay: 30,
     entries: [],
   };
-  const imported: AppState = { schemaVersion: 2, settings, periods: [sealed, open] };
+  const imported: AppState = { schemaVersion: 3, settings, periods: [sealed, open] };
   act(() => result.current.replaceState(imported));
 
   act(() => result.current.updateSettings({ deficit: 300 }));
@@ -112,7 +113,7 @@ test("hook: sugarBudget change rewrites the live period's sugar snapshot; sealed
     id: "open-1", startDate: "2026-07-01", endDate: "2026-07-14",
     budgetPerDay: 1800, sugarBudgetPerDay: 30, entries: [],
   };
-  act(() => result.current.replaceState({ schemaVersion: 2, settings, periods: [sealed, open] }));
+  act(() => result.current.replaceState({ schemaVersion: 3, settings, periods: [sealed, open] }));
   act(() => result.current.updateSettings({ sugarBudget: 20 }));
   expect(result.current.state.periods[0]).toMatchObject({ sugarBudgetPerDay: 30, sugarOutcome: "under" });
   expect(result.current.current!.sugarBudgetPerDay).toBe(20);
@@ -129,6 +130,26 @@ test("hook: updateEntry and deleteEntry", () => {
   expect(result.current.current!.entries).toHaveLength(0);
 });
 
+test("hook: addMealBreak prepends a dated marker; rename and delete work; markers never count as food", () => {
+  const { result } = renderHook(() => useAppState());
+  act(() => result.current.completeOnboarding(settings));
+  act(() => result.current.addEntry({ label: "toast", type: "debit", amount: 300, source: "manual" }));
+  act(() => result.current.addMealBreak("lunch"));
+
+  const items = result.current.current!.entries;
+  expect(items[0]).toMatchObject({ kind: "meal-break", meal: "lunch", date: result.current.today });
+  expect(entryTotals(items)).toEqual({ consumed: 300, earned: 0 });
+
+  const id = (items[0] as MealBreak).id;
+  act(() => result.current.updateMealBreak(id, "dinner"));
+  expect(result.current.current!.entries[0]).toMatchObject({ meal: "dinner" });
+
+  act(() => result.current.deleteEntry(id));
+  expect(result.current.current!.entries).toHaveLength(1);
+  // persisted
+  expect(loadState().periods[0].entries).toHaveLength(1);
+});
+
 const memStorage = (initial?: Record<string, string>): Storage => {
   const data = new Map(Object.entries(initial ?? {}));
   return {
@@ -141,19 +162,19 @@ const memStorage = (initial?: Record<string, string>): Storage => {
   } as Storage;
 };
 
-test("loadState migrates a v1 blob to schema v2 with sugar defaults", () => {
+test("loadState migrates a v1 blob to schema v3 with sugar defaults", () => {
   const v1 = {
     schemaVersion: 1,
     settings: { tdee: 2300, deficit: 500, anchorDate: "2026-07-01", periodLengthDays: 14, model: "m" },
     periods: [{ id: "p1", startDate: "2026-07-01", endDate: "2026-07-14", budgetPerDay: 1800, entries: [] }],
   };
   const s = loadState(memStorage({ "daily-dosh-food:v1": JSON.stringify(v1) }));
-  expect(s.schemaVersion).toBe(2);
+  expect(s.schemaVersion).toBe(3);
   expect(s.settings?.sugarBudget).toBe(30);
   expect(s.periods[0].sugarBudgetPerDay).toBe(30);
 });
 
-test("loadState passes a v2 blob through untouched", () => {
+test("loadState accepts a v2 blob (now stamped v3)", () => {
   const v2 = {
     schemaVersion: 2,
     settings: { tdee: 2300, deficit: 500, sugarBudget: 25, anchorDate: "2026-07-01", periodLengthDays: 14, model: "m" },
@@ -163,8 +184,20 @@ test("loadState passes a v2 blob through untouched", () => {
   expect(s.settings?.sugarBudget).toBe(25);
 });
 
+test("loadState stamps a v2 blob to schema v3, contents untouched", () => {
+  const v2 = {
+    schemaVersion: 2,
+    settings: { tdee: 2300, deficit: 500, sugarBudget: 25, anchorDate: "2026-07-01", periodLengthDays: 14, model: "m" },
+    periods: [{ id: "p1", startDate: "2026-07-01", endDate: "2026-07-14", budgetPerDay: 1800, sugarBudgetPerDay: 25, entries: [] }],
+  };
+  const s = loadState(memStorage({ "daily-dosh-food:v1": JSON.stringify(v2) }));
+  expect(s.schemaVersion).toBe(3);
+  expect(s.settings?.sugarBudget).toBe(25);
+  expect(s.periods).toEqual(v2.periods);
+});
+
 test("importJSON accepts v1 exports and migrates them", () => {
   const v1 = { schemaVersion: 1, periods: [] };
-  expect(importJSON(JSON.stringify(v1)).schemaVersion).toBe(2);
-  expect(() => importJSON(JSON.stringify({ schemaVersion: 3, periods: [] }))).toThrow();
+  expect(importJSON(JSON.stringify(v1)).schemaVersion).toBe(3);
+  expect(() => importJSON(JSON.stringify({ schemaVersion: 99, periods: [] }))).toThrow();
 });

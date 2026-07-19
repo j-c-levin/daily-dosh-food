@@ -1,7 +1,9 @@
-import type { ReactNode } from "react";
-import type { Entry } from "../lib/types";
+import { useEffect, useState, type ReactNode } from "react";
+import type { Entry, LedgerItem, MealName } from "../lib/types";
+import { isMealBreak } from "../lib/types";
 import { colors, mono } from "../theme";
 import { sugarLevel, SUGAR_LEVEL_COLORS } from "../lib/sugar";
+import MealBreakChips from "./MealBreakChips";
 
 export interface DaySummary {
   kcalLeftover: number; // that day's ledger leftover (positive = finished under)
@@ -9,13 +11,15 @@ export interface DaySummary {
 }
 
 interface EntryListProps {
-  entries: Entry[];
+  entries: LedgerItem[];
   onSelect: (e: Entry) => void;
   // Raw text of an in-flight submission, shown as a placeholder row above
   // the real entries while parseEntry resolves. Not a persisted Entry.
   pendingText?: string | null;
   daySummaries?: Record<string, DaySummary>; // keyed by ISO date; enables dividers
   today?: string;                            // ISO date rendered as "Today"
+  onRenameBreak?: (id: string, meal: MealName) => void;
+  onDeleteBreak?: (id: string) => void;
 }
 
 const PULSE_KEYFRAMES = `
@@ -42,7 +46,25 @@ function formatDate(iso: string): string {
   return `${d} ${months[m - 1]}`;
 }
 
-export default function EntryList({ entries, onSelect, pendingText, daySummaries, today }: EntryListProps) {
+export default function EntryList({ entries, onSelect, pendingText, daySummaries, today, onRenameBreak, onDeleteBreak }: EntryListProps) {
+  const [openBreakId, setOpenBreakId] = useState<string | null>(null);
+  const hasOpenBreak = openBreakId !== null;
+
+  // Design spec: the open chip editor collapses when tapping elsewhere (or a
+  // second tap on the row). The chips wrapper stops click propagation, so
+  // chip taps (pick/delete) never reach this listener — only outside taps
+  // (another row, the page background, or the open row itself, which drops
+  // its own click handler while open) do. Attaching in an effect — which
+  // runs after the render triggered by the opening click's state update, and
+  // after that click has finished dispatching — means the same click that
+  // opens the editor doesn't immediately close it.
+  useEffect(() => {
+    if (!hasOpenBreak) return;
+    const close = () => setOpenBreakId(null);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [hasOpenBreak]);
+
   const rows: ReactNode[] = [];
   let prevDate: string | null = null;
   // Divider grouping assumes entries are date-contiguous (same date never
@@ -78,6 +100,56 @@ export default function EntryList({ entries, onSelect, pendingText, daySummaries
       );
     }
     prevDate = entry.date;
+    if (isMealBreak(entry)) {
+      const open = openBreakId === entry.id;
+      rows.push(
+        <div
+          key={entry.id}
+          // Open state: the chips inside are real <button>s, so the row
+          // itself must not also be an interactive control (no nested
+          // interactive controls) — role/tabIndex/onClick/onKeyDown are
+          // dropped entirely. Row-tap-to-close is handled by the document
+          // click listener above instead.
+          role={open ? undefined : "button"}
+          tabIndex={open ? undefined : 0}
+          aria-label={`${entry.meal} break`}
+          onClick={open ? undefined : () => setOpenBreakId(entry.id)}
+          onKeyDown={
+            open
+              ? undefined
+              : (ev) => {
+                  if (ev.key === "Enter" || ev.key === " ") {
+                    ev.preventDefault();
+                    setOpenBreakId(entry.id);
+                  }
+                }
+          }
+          style={{ padding: "6px 16px", cursor: open ? "default" : "pointer" }}
+        >
+          {open ? (
+            // stopPropagation so a chip tap (or Enter/Space on a focused chip)
+            // doesn't bubble to the document click listener and close the
+            // editor before the pick/delete handler below gets to run its
+            // own explicit close.
+            <div onClick={(ev) => ev.stopPropagation()} onKeyDown={(ev) => ev.stopPropagation()}>
+              <MealBreakChips
+                current={entry.meal}
+                onPick={(m) => { onRenameBreak?.(entry.id, m); setOpenBreakId(null); }}
+                onDelete={() => { onDeleteBreak?.(entry.id); setOpenBreakId(null); }}
+              />
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: colors.faint }}>
+                {entry.meal}
+              </span>
+              <div style={{ flex: 1, height: 1, background: colors.divider }} />
+            </div>
+          )}
+        </div>
+      );
+      return;
+    }
     rows.push(
       <div
         key={entry.id}
@@ -93,9 +165,12 @@ export default function EntryList({ entries, onSelect, pendingText, daySummaries
         }}
         style={{
           padding: "14px 16px",
-          borderBottom: daySummaries
-            ? (entries[idx + 1] && entries[idx + 1].date === entry.date ? `1px solid ${colors.divider}` : "none")
-            : (idx < entries.length - 1 ? `1px solid ${colors.divider}` : "none"),
+          borderBottom: (() => {
+            const next = entries[idx + 1];
+            if (!next || isMealBreak(next)) return "none";
+            if (daySummaries) return next.date === entry.date ? `1px solid ${colors.divider}` : "none";
+            return `1px solid ${colors.divider}`;
+          })(),
           cursor: "pointer",
           display: "flex",
           justifyContent: "space-between",

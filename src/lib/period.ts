@@ -1,4 +1,5 @@
-import type { AppState, Entry, Period } from "./types";
+import type { AppState, LedgerItem, Period } from "./types";
+import { isMealBreak } from "./types";
 
 const DAY_MS = 86_400_000;
 
@@ -45,15 +46,18 @@ export function accruedBudget(period: Period, today: string): number {
   return daysElapsed(period, today) * period.budgetPerDay;
 }
 
-export function entryTotals(entries: Entry[]): { consumed: number; earned: number } {
+export function entryTotals(items: LedgerItem[]): { consumed: number; earned: number } {
   let consumed = 0, earned = 0;
-  for (const e of entries) e.type === "debit" ? (consumed += e.amount) : (earned += e.amount);
+  for (const e of items) {
+    if (isMealBreak(e)) continue;
+    e.type === "debit" ? (consumed += e.amount) : (earned += e.amount);
+  }
   return { consumed, earned };
 }
 
-export function sugarConsumed(entries: Entry[]): number {
+export function sugarConsumed(items: LedgerItem[]): number {
   let total = 0;
-  for (const e of entries) if (e.type === "debit") total += e.sugarG ?? 0;
+  for (const e of items) if (!isMealBreak(e) && e.type === "debit") total += e.sugarG ?? 0;
   return total;
 }
 
