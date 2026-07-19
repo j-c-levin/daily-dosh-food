@@ -1,16 +1,36 @@
 import { useCallback, useState } from "react";
-import type { AppState, Entry, Settings } from "./types";
-import { STORAGE_KEY, emptyState } from "./types";
+import type { AppState, Entry, Period, Settings } from "./types";
+import { STORAGE_KEY, emptyState, DEFAULT_SUGAR_BUDGET_G } from "./types";
 import { currentPeriod, rollover, todayISO } from "./period";
 import type { ParsedEntry } from "./ai";
+
+interface AppStateV1 {
+  schemaVersion: 1;
+  settings?: Omit<Settings, "sugarBudget">;
+  periods: Array<Omit<Period, "sugarBudgetPerDay" | "sugarOutcome">>;
+}
+
+// Returns a valid v2 state, or null if the blob is unrecognisable.
+export function migrate(parsed: unknown): AppState | null {
+  const s = parsed as { schemaVersion?: unknown; periods?: unknown };
+  if (!s || !Array.isArray(s.periods)) return null;
+  if (s.schemaVersion === 2) return parsed as AppState;
+  if (s.schemaVersion === 1) {
+    const v1 = parsed as AppStateV1;
+    return {
+      schemaVersion: 2,
+      settings: v1.settings ? { ...v1.settings, sugarBudget: DEFAULT_SUGAR_BUDGET_G } : undefined,
+      periods: v1.periods.map((p) => ({ ...p, sugarBudgetPerDay: DEFAULT_SUGAR_BUDGET_G })),
+    };
+  }
+  return null;
+}
 
 export function loadState(storage: Storage = localStorage): AppState {
   try {
     const raw = storage.getItem(STORAGE_KEY);
     if (!raw) return emptyState();
-    const parsed = JSON.parse(raw) as AppState;
-    if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.periods)) return emptyState();
-    return parsed;
+    return migrate(JSON.parse(raw)) ?? emptyState();
   } catch {
     return emptyState();
   }
@@ -36,11 +56,9 @@ export function importJSON(json: string): AppState {
   } catch {
     throw new Error("Not a Daily Dosh Food export");
   }
-  const s = parsed as AppState;
-  if (s?.schemaVersion !== 1 || !Array.isArray(s.periods)) {
-    throw new Error("Not a Daily Dosh Food export");
-  }
-  return s;
+  const migrated = migrate(parsed);
+  if (!migrated) throw new Error("Not a Daily Dosh Food export");
+  return migrated;
 }
 
 export function useAppState() {

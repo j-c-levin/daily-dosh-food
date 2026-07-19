@@ -6,6 +6,7 @@ export interface Entry {
   label: string;
   type: EntryType;
   amount: number;        // kcal, positive integer
+  sugarG?: number;       // grams of free sugars, ≥ 0; undefined = unknown (legacy/fallback)
   date: string;          // ISO yyyy-mm-dd (local)
   source: EntrySource;
 }
@@ -15,8 +16,10 @@ export interface Period {
   startDate: string;     // inclusive
   endDate: string;       // inclusive (start + 13 for 14-day periods)
   budgetPerDay: number;  // snapshot, rewritten immediately on settings changes until sealed
+  sugarBudgetPerDay: number; // snapshot, same rewrite rules as budgetPerDay
   entries: Entry[];
   outcome?: "positive" | "negative"; // set when sealed
+  sugarOutcome?: "under" | "over";   // set when sealed
 }
 
 export type Sex = "male" | "female";
@@ -33,6 +36,7 @@ export interface UserStats {
 export interface Settings {
   tdee: number;
   deficit: number;
+  sugarBudget: number;     // g free sugars per day
   stats?: UserStats;       // present when Mifflin path used; feeds AI prompt
   anchorDate: string;      // onboarding date; defines the period grid
   periodLengthDays: number; // 14
@@ -46,10 +50,13 @@ export const DEFAULT_MODEL = "claude-sonnet-4-6";
 export const PERIOD_LENGTH_DAYS = 14;
 export const STORAGE_KEY = "daily-dosh-food:v1";
 
+// NHS adult guideline for free sugars.
+export const DEFAULT_SUGAR_BUDGET_G = 30;
+
 export interface AppState {
-  schemaVersion: 1;
+  schemaVersion: 2;
   settings?: Settings;
   periods: Period[];
 }
 
-export const emptyState = (): AppState => ({ schemaVersion: 1, periods: [] });
+export const emptyState = (): AppState => ({ schemaVersion: 2, periods: [] });

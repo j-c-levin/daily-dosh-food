@@ -20,12 +20,18 @@ export function todayISO(now: Date = new Date()): string {
   return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
 }
 
-export function makePeriod(startDate: string, budgetPerDay: number, lengthDays: number): Period {
+export function makePeriod(
+  startDate: string,
+  budgetPerDay: number,
+  sugarBudgetPerDay: number,
+  lengthDays: number,
+): Period {
   return {
     id: crypto.randomUUID(),
     startDate,
     endDate: addDays(startDate, lengthDays - 1),
     budgetPerDay,
+    sugarBudgetPerDay,
     entries: [],
   };
 }
@@ -67,17 +73,18 @@ export function rollover(state: AppState, today: string): AppState {
   const settings = state.settings;
   if (!settings) return state;
   const budgetNow = settings.tdee - settings.deficit;
+  const sugarNow = settings.sugarBudget;
   const periods = state.periods.map((p) => ({ ...p, entries: [...p.entries] }));
 
   if (periods.length === 0) {
-    periods.push(makePeriod(settings.anchorDate, budgetNow, settings.periodLengthDays));
+    periods.push(makePeriod(settings.anchorDate, budgetNow, sugarNow, settings.periodLengthDays));
   }
   let changed = state.periods.length === 0;
 
   let last = periods[periods.length - 1];
   while (!last.outcome && daysBetween(last.endDate, today) > 0) {
     last.outcome = balance(last, last.endDate) >= 0 ? "positive" : "negative";
-    const next = makePeriod(addDays(last.endDate, 1), budgetNow, settings.periodLengthDays);
+    const next = makePeriod(addDays(last.endDate, 1), budgetNow, sugarNow, settings.periodLengthDays);
     periods.push(next);
     last = next;
     changed = true;

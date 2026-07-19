@@ -11,7 +11,7 @@ import { fallbackParse, parseEntry } from "./ai";
 import type { Settings } from "./types";
 
 const settings = (over: Partial<Settings> = {}): Settings => ({
-  tdee: 2300, deficit: 500, anchorDate: "2026-07-01", periodLengthDays: 14,
+  tdee: 2300, deficit: 500, sugarBudget: 30, anchorDate: "2026-07-01", periodLengthDays: 14,
   model: "claude-haiku-4-5", ...over,
 });
 

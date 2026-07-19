@@ -13,7 +13,7 @@ import { parseEntry, type ParsedEntry } from "../lib/ai";
 import type { Period, Settings } from "../lib/types";
 
 const settings: Settings = {
-  tdee: 2300, deficit: 500, anchorDate: "2026-07-01", periodLengthDays: 14, model: "claude-haiku-4-5", apiKey: "k",
+  tdee: 2300, deficit: 500, sugarBudget: 30, anchorDate: "2026-07-01", periodLengthDays: 14, model: "claude-haiku-4-5", apiKey: "k",
 };
 
 beforeEach(() => {
@@ -107,10 +107,11 @@ test("caption shows a this-period/next-period split when an imported backup's pe
     startDate: hook.result.current.current!.startDate,
     endDate: hook.result.current.current!.endDate,
     budgetPerDay: 1800,
+    sugarBudgetPerDay: 30,
     entries: [],
   };
   act(() =>
-    hook.result.current.replaceState({ schemaVersion: 1, settings: importedSettings, periods: [openPeriod] })
+    hook.result.current.replaceState({ schemaVersion: 2, settings: importedSettings, periods: [openPeriod] })
   );
   rerender(
     <Dashboard

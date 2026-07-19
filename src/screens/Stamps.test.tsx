@@ -4,7 +4,7 @@ import type { Period } from "../lib/types";
 
 const p = (n: number, outcome?: "positive" | "negative"): Period => ({
   id: String(n), startDate: "2026-07-01", endDate: "2026-07-14",
-  budgetPerDay: 1800, entries: [], outcome,
+  budgetPerDay: 1800, sugarBudgetPerDay: 30, entries: [], outcome,
 });
 
 test("renders sealed stamps and recovery caption", () => {
