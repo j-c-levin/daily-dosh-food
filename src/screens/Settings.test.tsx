@@ -227,6 +227,19 @@ test("an unsaved API key draft survives an unrelated Budget save", async () => {
   expect(screen.getByLabelText(/api key/i)).toHaveValue("sk-ant-draft");
 });
 
+test("saving a changed sugar budget persists it and updates the live period", async () => {
+  localStorage.clear();
+  const user = userEvent.setup();
+  const hook = renderHook(() => useAppState());
+  act(() => hook.result.current.completeOnboarding(settings));
+  render(<SettingsScreen app={hook.result.current} onBack={vi.fn()} />);
+  const input = screen.getByLabelText(/sugar budget/i);
+  await user.clear(input);
+  await user.type(input, "25");
+  await user.click(screen.getByRole("button", { name: /^save$/i }));
+  expect(hook.result.current.state.settings!.sugarBudget).toBe(25);
+});
+
 test("back button calls onBack", async () => {
   localStorage.clear();
   const user = userEvent.setup();

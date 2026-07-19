@@ -93,6 +93,16 @@ function Stamp({ period, index }: { period: Period; index: number }) {
         {finalBalance >= 0 ? "+" : "−"}
         {Math.abs(finalBalance)}
       </span>
+      {period.sugarOutcome && (
+        <span
+          style={{
+            fontFamily: mono, fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
+            color: period.sugarOutcome === "under" ? colors.positive : colors.negative,
+          }}
+        >
+          SUGAR {period.sugarOutcome === "under" ? "UNDER" : "OVER"}
+        </span>
+      )}
     </div>
   );
 }
