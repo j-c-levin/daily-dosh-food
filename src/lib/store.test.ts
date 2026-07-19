@@ -1,7 +1,8 @@
 import { renderHook, act } from "@testing-library/react";
 import { loadState, saveState, exportJSON, importJSON, useAppState } from "./store";
+import { entryTotals } from "./period";
 import { STORAGE_KEY, emptyState } from "./types";
-import type { AppState, Period, Settings } from "./types";
+import type { AppState, MealBreak, Period, Settings } from "./types";
 
 const settings: Settings = {
   tdee: 2300, deficit: 500, sugarBudget: 30, anchorDate: "2026-07-01", periodLengthDays: 14, model: "claude-haiku-4-5",
@@ -127,6 +128,26 @@ test("hook: updateEntry and deleteEntry", () => {
   expect(result.current.current!.entries[0]).toMatchObject({ amount: 250, type: "credit" });
   act(() => result.current.deleteEntry(id));
   expect(result.current.current!.entries).toHaveLength(0);
+});
+
+test("hook: addMealBreak prepends a dated marker; rename and delete work; markers never count as food", () => {
+  const { result } = renderHook(() => useAppState());
+  act(() => result.current.completeOnboarding(settings));
+  act(() => result.current.addEntry({ label: "toast", type: "debit", amount: 300, source: "manual" }));
+  act(() => result.current.addMealBreak("lunch"));
+
+  const items = result.current.current!.entries;
+  expect(items[0]).toMatchObject({ kind: "meal-break", meal: "lunch", date: result.current.today });
+  expect(entryTotals(items)).toEqual({ consumed: 300, earned: 0 });
+
+  const id = (items[0] as MealBreak).id;
+  act(() => result.current.updateMealBreak(id, "dinner"));
+  expect(result.current.current!.entries[0]).toMatchObject({ meal: "dinner" });
+
+  act(() => result.current.deleteEntry(id));
+  expect(result.current.current!.entries).toHaveLength(1);
+  // persisted
+  expect(loadState().periods[0].entries).toHaveLength(1);
 });
 
 const memStorage = (initial?: Record<string, string>): Storage => {

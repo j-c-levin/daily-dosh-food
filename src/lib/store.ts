@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import type { AppState, Entry, LedgerItem, Period, Settings } from "./types";
+import type { AppState, Entry, LedgerItem, MealName, Period, Settings } from "./types";
 import { STORAGE_KEY, emptyState, DEFAULT_SUGAR_BUDGET_G, isMealBreak } from "./types";
 import { currentPeriod, rollover, todayISO } from "./period";
 import type { ParsedEntry } from "./ai";
@@ -121,6 +121,13 @@ export function useAppState() {
         { id: crypto.randomUUID(), date: today, label: parsed.label, type: parsed.type, amount: parsed.amount, sugarG: parsed.type === "debit" ? parsed.sugarG : undefined, source: parsed.source },
         ...entries,
       ]),
+    addMealBreak: (meal: MealName) =>
+      mutateCurrent((items) => [
+        { kind: "meal-break", id: crypto.randomUUID(), meal, date: today },
+        ...items,
+      ]),
+    updateMealBreak: (id: string, meal: MealName) =>
+      mutateCurrent((items) => items.map((i) => (isMealBreak(i) && i.id === id ? { ...i, meal } : i))),
     updateEntry: (id: string, patch: Partial<Pick<Entry, "label" | "type" | "amount" | "sugarG">>) =>
       mutateCurrent((items) => items.map((e) => (!isMealBreak(e) && e.id === id ? { ...e, ...patch } : e))),
     deleteEntry: (id: string) => mutateCurrent((items) => items.filter((e) => e.id !== id)),
