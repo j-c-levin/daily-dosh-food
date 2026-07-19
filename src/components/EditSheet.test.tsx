@@ -55,3 +55,16 @@ test("empty sugar field saves as unknown (undefined)", async () => {
   await userEvent.click(screen.getByText("Save"));
   expect(onSave).toHaveBeenCalledWith({ label: "stew", type: "debit", amount: 400, sugarG: undefined });
 });
+
+test("invalid sugar on a debit no longer blocks save after toggling to credit", async () => {
+  const onSave = vi.fn();
+  render(<EditSheet entry={{ id: "1", label: "flapjack", type: "debit", amount: 300, sugarG: 18, date: "2026-07-19", source: "ai" }} onSave={onSave} onDelete={() => {}} onClose={() => {}} />);
+  const sugar = screen.getByLabelText(/sugar/i);
+  await userEvent.clear(sugar);
+  await userEvent.type(sugar, "-5");
+  await userEvent.click(screen.getByText("Save"));
+  expect(onSave).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByText("Credit"));
+  await userEvent.click(screen.getByText("Save"));
+  expect(onSave).toHaveBeenCalledWith({ label: "flapjack", type: "credit", amount: 300, sugarG: undefined });
+});

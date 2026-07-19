@@ -1033,7 +1033,7 @@ State + validity:
 const [sugar, setSugar] = useState(entry.sugarG != null ? String(entry.sugarG) : "");
 const numericSugar = sugar.trim() === "" ? undefined : Number(sugar);
 const sugarValid = numericSugar === undefined || (!Number.isNaN(numericSugar) && numericSugar >= 0);
-const isValid = label.trim() !== "" && amount !== "" && !Number.isNaN(numericAmount) && numericAmount >= 0 && sugarValid;
+const isValid = label.trim() !== "" && amount !== "" && !Number.isNaN(numericAmount) && numericAmount >= 0 && (type !== "debit" || sugarValid);
 ```
 
 `handleSave`:
