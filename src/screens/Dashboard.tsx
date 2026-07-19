@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Entry, Settings } from "../lib/types";
 import { balance, paceInfo, dailyBalances, entryTotals } from "../lib/period";
 import { parseEntry } from "../lib/ai";
-import { todayLedger } from "../lib/carryover";
+import { computeLedger } from "../lib/carryover";
 import type { useAppState } from "../lib/store";
 import { colors, mono, sans } from "../theme";
 import Sparkline from "../components/Sparkline";
@@ -61,8 +61,13 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
     return null;
   }
 
-  const calToday = todayLedger(app.state.periods, app.today, "calories")!;
-  const sugarToday = todayLedger(app.state.periods, app.today, "sugar")!;
+  const calLedger = computeLedger(app.state.periods, app.today, "calories");
+  const sugarLedger = computeLedger(app.state.periods, app.today, "sugar");
+  const calToday = calLedger[calLedger.length - 1]!;
+  const sugarToday = sugarLedger[sugarLedger.length - 1]!;
+  const daySummaries = Object.fromEntries(
+    calLedger.map((d, i) => [d.date, { kcalLeftover: d.leftover, sugarUsedG: sugarLedger[i].debits }]),
+  );
   const leftToday = Math.round(calToday.leftover);
   const bonusToday = Math.round(calToday.bonus);
   const isPositive = leftToday >= 0;
@@ -187,7 +192,7 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
 
         {/* Entries */}
         <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Recent entries</div>
-        <EntryList entries={period.entries} onSelect={handleSelect} pendingText={pendingText} />
+        <EntryList entries={period.entries} onSelect={handleSelect} pendingText={pendingText} daySummaries={daySummaries} today={app.today} />
       </div>
 
       {toast && (
