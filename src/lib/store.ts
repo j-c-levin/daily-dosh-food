@@ -116,10 +116,10 @@ export function useAppState() {
       }),
     addEntry: (parsed: ParsedEntry | Omit<Entry, "id" | "date">) =>
       mutateCurrent((entries) => [
-        { id: crypto.randomUUID(), date: today, label: parsed.label, type: parsed.type, amount: parsed.amount, source: parsed.source },
+        { id: crypto.randomUUID(), date: today, label: parsed.label, type: parsed.type, amount: parsed.amount, sugarG: parsed.sugarG, source: parsed.source },
         ...entries,
       ]),
-    updateEntry: (id: string, patch: Partial<Pick<Entry, "label" | "type" | "amount">>) =>
+    updateEntry: (id: string, patch: Partial<Pick<Entry, "label" | "type" | "amount" | "sugarG">>) =>
       mutateCurrent((entries) => entries.map((e) => (e.id === id ? { ...e, ...patch } : e))),
     deleteEntry: (id: string) => mutateCurrent((entries) => entries.filter((e) => e.id !== id)),
     replaceState: (imported: AppState) => update(() => rollover(imported, today)),

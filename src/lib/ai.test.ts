@@ -7,7 +7,7 @@ vi.mock("@anthropic-ai/sdk", () => ({
   },
 }));
 
-import { fallbackParse, parseEntry } from "./ai";
+import { fallbackParse, parseEntry, SCHEMA, systemPrompt } from "./ai";
 import type { Settings } from "./types";
 
 const settings = (over: Partial<Settings> = {}): Settings => ({
@@ -32,10 +32,10 @@ test("parseEntry without apiKey uses fallback and never calls the API", async ()
 test("parseEntry with key returns structured AI result", async () => {
   createMock.mockResolvedValue({
     stop_reason: "end_turn",
-    content: [{ type: "text", text: JSON.stringify({ label: "Chicken sandwich", type: "debit", amount: 480 }) }],
+    content: [{ type: "text", text: JSON.stringify({ label: "Chicken sandwich", type: "debit", amount: 480, sugarG: 4 }) }],
   });
   const r = await parseEntry("chicken sandwich", settings({ apiKey: "sk-ant-test" }));
-  expect(r).toEqual({ label: "Chicken sandwich", type: "debit", amount: 480, source: "ai" });
+  expect(r).toEqual({ label: "Chicken sandwich", type: "debit", amount: 480, sugarG: 4, source: "ai" });
   const req = (createMock as Mock).mock.calls[0][0];
   expect(req.model).toBe("claude-haiku-4-5");
   expect(req.output_config.format.type).toBe("json_schema");
@@ -58,4 +58,20 @@ test("parseEntry falls back on API error or refusal", async () => {
   expect((await parseEntry("toast", settings({ apiKey: "k" }))).source).toBe("fallback");
   createMock.mockResolvedValueOnce({ stop_reason: "refusal", content: [] });
   expect((await parseEntry("toast", settings({ apiKey: "k" }))).source).toBe("fallback");
+});
+
+test("fallbackParse leaves sugarG undefined (unknown, counts 0)", () => {
+  expect(fallbackParse("chocolate bar").sugarG).toBeUndefined();
+  expect(fallbackParse("30 min run").sugarG).toBeUndefined();
+});
+
+test("SCHEMA requires sugarG so structured output always includes it", () => {
+  expect(SCHEMA.required).toContain("sugarG");
+  expect(SCHEMA.properties.sugarG.type).toBe("number");
+});
+
+test("systemPrompt states the free-sugar definition", () => {
+  const p = systemPrompt();
+  expect(p).toMatch(/free sugars/i);
+  expect(p).toMatch(/whole fruit/i);
 });
