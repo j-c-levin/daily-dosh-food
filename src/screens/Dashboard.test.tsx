@@ -43,6 +43,21 @@ test("shows balance, pace and stat row", () => {
   expect(screen.getByText(/earned back/i)).toBeInTheDocument();
 });
 
+test("shows plain daily intake averages instead of period pace/projection", () => {
+  // 1800 kcal day 1 + 1200 kcal day 2, today 2026-07-03 (elapsed 3 days),
+  // period 07-01..07-14 → consumed 3000 ÷ 3 = 1000 kcal/day, sugar 0g/day,
+  // daysLeft = daysBetween(07-03, 07-14) = 11.
+  renderWithEntries([
+    day({ amount: 1800, date: "2026-07-01" }),
+    day({ amount: 1200, date: "2026-07-02" }),
+  ]);
+  expect(screen.getByText(/eating/i)).toHaveTextContent(
+    "eating ~1000 kcal a day · ~0g sugar a day · 11 days to next period"
+  );
+  expect(screen.queryByText(/at this pace/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/period \+/i)).not.toBeInTheDocument();
+});
+
 test("composer logs an entry through parseEntry", async () => {
   const user = userEvent.setup();
   const { hook, view } = setup();

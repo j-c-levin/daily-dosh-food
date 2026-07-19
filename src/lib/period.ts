@@ -62,14 +62,6 @@ export function balance(period: Period, today: string): number {
   return accruedBudget(period, today) - consumed + earned;
 }
 
-export function paceInfo(period: Period, today: string) {
-  const elapsed = Math.max(1, daysElapsed(period, today));
-  const bal = balance(period, today);
-  const avgPerDay = Math.round(bal / elapsed);
-  const daysLeft = Math.max(0, daysBetween(today, period.endDate));
-  return { avgPerDay, daysLeft, projectedEnd: bal + avgPerDay * daysLeft };
-}
-
 export function currentPeriod(state: AppState): Period | undefined {
   const last = state.periods[state.periods.length - 1];
   return last && !last.outcome ? last : undefined;
@@ -99,6 +91,16 @@ export function rollover(state: AppState, today: string): AppState {
     changed = true;
   }
   return changed ? { ...state, periods } : state;
+}
+
+export function dailySugarGrams(period: Period, today: string): number[] {
+  const days = daysElapsed(period, today);
+  const out: number[] = [];
+  for (let i = 0; i < days; i++) {
+    const day = addDays(period.startDate, i);
+    out.push(sugarConsumed(period.entries.filter((e) => e.date === day)));
+  }
+  return out;
 }
 
 export function dailyBalances(period: Period, today: string): number[] {
