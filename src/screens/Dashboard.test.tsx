@@ -179,3 +179,29 @@ test("sugar gauge shows used vs decayed allowance", () => {
   ]);
   expect(screen.getByText("12g of 36g")).toBeInTheDocument();
 });
+
+test("renders nothing (doesn't crash) when today precedes the only period's start date", () => {
+  // System date is pinned to 2026-07-03; give the app a single open period
+  // that starts the day after "today" (e.g. a timezone shift or clock
+  // correction moved `today` backwards). computeLedger returns [] in that
+  // case, so calToday/sugarToday are undefined — Dashboard must bail out
+  // rather than throw on the missing tail entry.
+  const { hook, view } = setup();
+  const { rerender, container } = view();
+  const open: Period = {
+    id: "open-1", startDate: "2026-07-04", endDate: "2026-07-17",
+    budgetPerDay: 1800, sugarBudgetPerDay: 30, entries: [],
+  };
+  act(() => {
+    hook.result.current.replaceState({
+      schemaVersion: 2, settings: hook.result.current.state.settings!, periods: [open],
+    });
+  });
+  expect(() =>
+    rerender(
+      <Dashboard app={hook.result.current} settings={hook.result.current.state.settings!} onShowStamps={vi.fn()} onShowSettings={vi.fn()} />
+    )
+  ).not.toThrow();
+  expect(container.firstChild).toBeNull();
+  expect(screen.queryByText(/left today/i)).not.toBeInTheDocument();
+});

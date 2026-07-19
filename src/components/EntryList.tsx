@@ -45,6 +45,9 @@ function formatDate(iso: string): string {
 export default function EntryList({ entries, onSelect, pendingText, daySummaries, today }: EntryListProps) {
   const rows: ReactNode[] = [];
   let prevDate: string | null = null;
+  // Divider grouping assumes entries are date-contiguous (same date never
+  // reappears after a different date is seen): the store prepends today's
+  // new entries, and EditSheet never lets a date be edited.
   entries.forEach((entry, idx) => {
     if (daySummaries && entry.date !== prevDate) {
       const summary = daySummaries[entry.date];

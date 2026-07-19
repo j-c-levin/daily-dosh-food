@@ -24,6 +24,9 @@ export function computeLedger(periods: Period[], today: string, mode: LedgerMode
   const days = daysBetween(start, today) + 1;
   if (days <= 0) return [];
 
+  // Entries are keyed by date across ALL periods, not per-period — this is safe
+  // because rollover() generates contiguous, non-overlapping periods, so a date
+  // can only ever belong to one period's entries.
   const debitsByDate = new Map<string, number>();
   const creditsByDate = new Map<string, number>();
   for (const p of periods) {

@@ -77,7 +77,7 @@ export async function parseEntry(text: string, settings: Settings): Promise<Pars
       label: parsed.label,
       type: parsed.type,
       amount: Math.max(0, Math.round(parsed.amount)),
-      sugarG: Math.max(0, Math.round(parsed.sugarG)),
+      sugarG: Number.isFinite(parsed.sugarG) ? Math.max(0, Math.round(parsed.sugarG)) : undefined,
       source: "ai",
     };
   } catch {

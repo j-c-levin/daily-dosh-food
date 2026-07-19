@@ -60,6 +60,15 @@ test("parseEntry falls back on API error or refusal", async () => {
   expect((await parseEntry("toast", settings({ apiKey: "k" }))).source).toBe("fallback");
 });
 
+test("parseEntry treats a missing/malformed sugarG as undefined instead of persisting NaN", async () => {
+  createMock.mockResolvedValue({
+    stop_reason: "end_turn",
+    content: [{ type: "text", text: JSON.stringify({ label: "mystery item", type: "debit", amount: 200 }) }],
+  });
+  const r = await parseEntry("mystery item", settings({ apiKey: "sk-ant-test" }));
+  expect(r.sugarG).toBeUndefined();
+});
+
 test("fallbackParse leaves sugarG undefined (unknown, counts 0)", () => {
   expect(fallbackParse("chocolate bar").sugarG).toBeUndefined();
   expect(fallbackParse("30 min run").sugarG).toBeUndefined();

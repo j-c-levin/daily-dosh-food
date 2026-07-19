@@ -5,9 +5,8 @@ import fs from "node:fs";
 import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import { SCHEMA, systemPrompt } from "../src/lib/ai";
-import type { EntryType } from "../src/lib/types";
 import { EVAL_STATS, FIXTURES, type Fixture } from "./fixtures";
-import { scoreCall, summarize, type ModelPricing, type ScoredCall } from "./score";
+import { scoreCall, summarize, type ModelPricing, type ParsedResult, type ScoredCall } from "./score";
 
 const DEFAULT_MODELS = ["claude-haiku-4-5", "claude-sonnet-4-6", "claude-sonnet-5"];
 
@@ -20,13 +19,6 @@ const PRICING: Record<string, ModelPricing> = {
 };
 
 const CONCURRENCY = 5;
-
-interface ParsedResult {
-  label: string;
-  type: EntryType;
-  amount: number;
-  sugarG: number;
-}
 
 interface RawCall {
   fixture: Fixture;

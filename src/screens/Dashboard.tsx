@@ -63,8 +63,12 @@ export default function Dashboard({ app, settings, onShowStamps, onShowSettings 
 
   const calLedger = computeLedger(app.state.periods, app.today, "calories");
   const sugarLedger = computeLedger(app.state.periods, app.today, "sugar");
-  const calToday = calLedger[calLedger.length - 1]!;
-  const sugarToday = sugarLedger[sugarLedger.length - 1]!;
+  const calToday = calLedger[calLedger.length - 1];
+  const sugarToday = sugarLedger[sugarLedger.length - 1];
+  // computeLedger returns [] when `today` precedes the first period's start
+  // date (e.g. a timezone shift or clock correction moves "today" backwards)
+  // — bail rather than crash on the undefined tail entry.
+  if (!calToday || !sugarToday) return null;
   const daySummaries = Object.fromEntries(
     calLedger.map((d, i) => [d.date, { kcalLeftover: d.leftover, sugarUsedG: sugarLedger[i].debits }]),
   );

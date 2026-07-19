@@ -116,7 +116,7 @@ export function useAppState() {
       }),
     addEntry: (parsed: ParsedEntry | Omit<Entry, "id" | "date">) =>
       mutateCurrent((entries) => [
-        { id: crypto.randomUUID(), date: today, label: parsed.label, type: parsed.type, amount: parsed.amount, sugarG: parsed.sugarG, source: parsed.source },
+        { id: crypto.randomUUID(), date: today, label: parsed.label, type: parsed.type, amount: parsed.amount, sugarG: parsed.type === "debit" ? parsed.sugarG : undefined, source: parsed.source },
         ...entries,
       ]),
     updateEntry: (id: string, patch: Partial<Pick<Entry, "label" | "type" | "amount" | "sugarG">>) =>
