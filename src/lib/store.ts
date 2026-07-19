@@ -1,16 +1,36 @@
 import { useCallback, useState } from "react";
-import type { AppState, Entry, Settings } from "./types";
-import { STORAGE_KEY, emptyState } from "./types";
+import type { AppState, Entry, Period, Settings } from "./types";
+import { STORAGE_KEY, emptyState, DEFAULT_SUGAR_BUDGET_G } from "./types";
 import { currentPeriod, rollover, todayISO } from "./period";
 import type { ParsedEntry } from "./ai";
+
+interface AppStateV1 {
+  schemaVersion: 1;
+  settings?: Omit<Settings, "sugarBudget">;
+  periods: Array<Omit<Period, "sugarBudgetPerDay" | "sugarOutcome">>;
+}
+
+// Returns a valid v2 state, or null if the blob is unrecognisable.
+export function migrate(parsed: unknown): AppState | null {
+  const s = parsed as { schemaVersion?: unknown; periods?: unknown };
+  if (!s || !Array.isArray(s.periods)) return null;
+  if (s.schemaVersion === 2) return parsed as AppState;
+  if (s.schemaVersion === 1) {
+    const v1 = parsed as AppStateV1;
+    return {
+      schemaVersion: 2,
+      settings: v1.settings ? { ...v1.settings, sugarBudget: DEFAULT_SUGAR_BUDGET_G } : undefined,
+      periods: v1.periods.map((p) => ({ ...p, sugarBudgetPerDay: DEFAULT_SUGAR_BUDGET_G })),
+    };
+  }
+  return null;
+}
 
 export function loadState(storage: Storage = localStorage): AppState {
   try {
     const raw = storage.getItem(STORAGE_KEY);
     if (!raw) return emptyState();
-    const parsed = JSON.parse(raw) as AppState;
-    if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.periods)) return emptyState();
-    return parsed;
+    return migrate(JSON.parse(raw)) ?? emptyState();
   } catch {
     return emptyState();
   }
@@ -36,11 +56,9 @@ export function importJSON(json: string): AppState {
   } catch {
     throw new Error("Not a Daily Dosh Food export");
   }
-  const s = parsed as AppState;
-  if (s?.schemaVersion !== 1 || !Array.isArray(s.periods)) {
-    throw new Error("Not a Daily Dosh Food export");
-  }
-  return s;
+  const migrated = migrate(parsed);
+  if (!migrated) throw new Error("Not a Daily Dosh Food export");
+  return migrated;
 }
 
 export function useAppState() {
@@ -81,23 +99,27 @@ export function useAppState() {
         const idx = s.periods.length - 1;
         const last = s.periods[idx];
         const budgetNow = settings.tdee - settings.deficit;
+        const sugarNow = settings.sugarBudget;
         // Budget changes take effect immediately on the current (unsealed) period —
-        // rewrite its budgetPerDay snapshot so accrual/balance/pace/sparkline
-        // retroactively recompute from the period's start date. Sealed periods
-        // (stamps) are immutable history and are never touched here.
-        if (last && !last.outcome && last.budgetPerDay !== budgetNow) {
+        // rewrite its budgetPerDay/sugarBudgetPerDay snapshot so accrual/balance/pace/
+        // sparkline retroactively recompute from the period's start date. Sealed
+        // periods (stamps) are immutable history and are never touched here.
+        if (
+          last && !last.outcome &&
+          (last.budgetPerDay !== budgetNow || last.sugarBudgetPerDay !== sugarNow)
+        ) {
           const periods = [...s.periods];
-          periods[idx] = { ...last, budgetPerDay: budgetNow };
+          periods[idx] = { ...last, budgetPerDay: budgetNow, sugarBudgetPerDay: sugarNow };
           return { ...s, settings, periods };
         }
         return { ...s, settings };
       }),
     addEntry: (parsed: ParsedEntry | Omit<Entry, "id" | "date">) =>
       mutateCurrent((entries) => [
-        { id: crypto.randomUUID(), date: today, label: parsed.label, type: parsed.type, amount: parsed.amount, source: parsed.source },
+        { id: crypto.randomUUID(), date: today, label: parsed.label, type: parsed.type, amount: parsed.amount, sugarG: parsed.type === "debit" ? parsed.sugarG : undefined, source: parsed.source },
         ...entries,
       ]),
-    updateEntry: (id: string, patch: Partial<Pick<Entry, "label" | "type" | "amount">>) =>
+    updateEntry: (id: string, patch: Partial<Pick<Entry, "label" | "type" | "amount" | "sugarG">>) =>
       mutateCurrent((entries) => entries.map((e) => (e.id === id ? { ...e, ...patch } : e))),
     deleteEntry: (id: string) => mutateCurrent((entries) => entries.filter((e) => e.id !== id)),
     replaceState: (imported: AppState) => update(() => rollover(imported, today)),

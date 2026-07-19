@@ -28,6 +28,7 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
 
   const [tdeeInput, setTdeeInput] = useState(settings ? String(settings.tdee) : "");
   const [deficitInput, setDeficitInput] = useState(settings ? String(settings.deficit) : "");
+  const [sugarInput, setSugarInput] = useState(settings ? String(settings.sugarBudget) : "");
   const [showStats, setShowStats] = useState(false);
   const [sex, setSex] = useState<Sex | undefined>(settings?.stats?.sex);
   const [age, setAge] = useState(settings?.stats ? String(settings.stats.age) : "");
@@ -46,7 +47,7 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
   // and lets the settings-identity resync below skip any field the user is mid-edit on (so a
   // stale mount-time value can never overwrite freshly-imported settings on the next Save,
   // since untouched fields are never included in Save's patch to begin with).
-  type DirtyField = "tdee" | "deficit" | "stats" | "apiKey" | "model";
+  type DirtyField = "tdee" | "deficit" | "sugarBudget" | "stats" | "apiKey" | "model";
   const [dirty, setDirty] = useState<Set<DirtyField>>(new Set());
   const markDirty = (field: DirtyField) =>
     setDirty((prev) => (prev.has(field) ? prev : new Set(prev).add(field)));
@@ -66,6 +67,7 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
     if (!settings) return;
     if (!dirty.has("tdee")) setTdeeInput(String(settings.tdee));
     if (!dirty.has("deficit")) setDeficitInput(String(settings.deficit));
+    if (!dirty.has("sugarBudget")) setSugarInput(String(settings.sugarBudget));
     if (!dirty.has("stats")) {
       setSex(settings.stats?.sex);
       setAge(settings.stats ? String(settings.stats.age) : "");
@@ -101,8 +103,14 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
 
   const tdeeNum = Number(tdeeInput);
   const deficitNum = Number(deficitInput);
+  const sugarNum = Number(sugarInput);
+  const sugarBudgetValid = sugarInput.trim() !== "" && sugarNum >= 0;
   const budgetValid =
-    tdeeInput.trim() !== "" && tdeeNum > 0 && deficitInput.trim() !== "" && deficitNum >= 0;
+    tdeeInput.trim() !== "" &&
+    tdeeNum > 0 &&
+    deficitInput.trim() !== "" &&
+    deficitNum >= 0 &&
+    sugarBudgetValid;
 
   const handleUseRecalculated = () => {
     if (recalculatedTdee !== undefined) {
@@ -116,9 +124,10 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
     const patch: Partial<Settings> = {};
     if (dirty.has("tdee")) patch.tdee = tdeeNum;
     if (dirty.has("deficit")) patch.deficit = deficitNum;
+    if (dirty.has("sugarBudget")) patch.sugarBudget = sugarNum;
     if (dirty.has("stats")) patch.stats = draftStats ?? settings.stats;
     app.updateSettings(patch);
-    clearDirty(["tdee", "deficit", "stats"]);
+    clearDirty(["tdee", "deficit", "sugarBudget", "stats"]);
   };
 
   const handleTestKey = async () => {
@@ -227,6 +236,21 @@ export default function SettingsScreen({ app, onBack }: SettingsScreenProps) {
               markDirty("deficit");
             }}
             style={{ ...inputStyle, fontFamily: mono, margin: "6px 0 0" }}
+          />
+
+          <label style={labelStyle} htmlFor="settings-sugar-budget">
+            Daily sugar budget (g free sugars)
+          </label>
+          <input
+            id="settings-sugar-budget"
+            type="number"
+            min="0"
+            value={sugarInput}
+            onChange={(e) => {
+              setSugarInput(e.target.value);
+              markDirty("sugarBudget");
+            }}
+            style={{ ...inputStyle, fontFamily: mono, margin: "6px 0 14px" }}
           />
 
           {settings.stats && (

@@ -2,9 +2,9 @@ import { render, screen } from "@testing-library/react";
 import Stamps from "./Stamps";
 import type { Period } from "../lib/types";
 
-const p = (n: number, outcome?: "positive" | "negative"): Period => ({
+const p = (n: number, outcome?: "positive" | "negative", sugarOutcome?: "under" | "over"): Period => ({
   id: String(n), startDate: "2026-07-01", endDate: "2026-07-14",
-  budgetPerDay: 1800, entries: [], outcome,
+  budgetPerDay: 1800, sugarBudgetPerDay: 30, entries: [], outcome, sugarOutcome,
 });
 
 test("renders sealed stamps and recovery caption", () => {
@@ -17,4 +17,14 @@ test("renders sealed stamps and recovery caption", () => {
 test("empty state", () => {
   render(<Stamps periods={[p(1)]} onBack={() => {}} />);
   expect(screen.getByText(/first stamp lands/i)).toBeInTheDocument();
+});
+
+test("sealed periods show the sugar verdict when present", () => {
+  render(<Stamps periods={[p(1, "positive", "over")]} onBack={() => {}} />);
+  expect(screen.getByText("SUGAR OVER")).toBeInTheDocument();
+});
+
+test("legacy sealed periods without sugarOutcome show no sugar mark", () => {
+  render(<Stamps periods={[p(1, "positive")]} onBack={() => {}} />);
+  expect(screen.queryByText(/SUGAR/)).not.toBeInTheDocument();
 });

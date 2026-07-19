@@ -352,7 +352,7 @@ All numbers below are hand-derived from the kernels; keep them exactly.
 
 ```ts
 import { computeLedger, todayLedger } from "./carryover";
-import { makePeriod } from "./period";
+import { addDays, makePeriod } from "./period";
 import type { Entry, Period } from "./types";
 
 const entry = (over: Partial<Entry>): Entry => ({
@@ -443,11 +443,15 @@ test("entries with unknown sugarG count 0 in sugar mode", () => {
 });
 
 test("carryover crosses period boundaries", () => {
-  // P1 ends 07-14 with a 600 leftover on its final day; P2 (different budgets)
-  // starts 07-15 and receives 30% of it.
+  // P1 ends 07-14: days 1–13 each eat exactly their 1000 base (leftover 0),
+  // so no bonus compounds; day 14 eats 400 → leftover exactly 600. P2 (a
+  // different budget) starts 07-15 and receives 30% of that 600.
   const p1 = makePeriod("2026-07-01", 1000, 30, 14);
   p1.outcome = "positive";
-  p1.entries = [entry({ amount: 400, date: "2026-07-14" })];
+  p1.entries = [
+    ...Array.from({ length: 13 }, (_, i) => entry({ amount: 1000, date: addDays("2026-07-01", i) })),
+    entry({ amount: 400, date: "2026-07-14" }),
+  ];
   const p2 = makePeriod("2026-07-15", 2000, 30, 14);
   const led = computeLedger([p1, p2], "2026-07-15", "calories");
   const day15 = led[led.length - 1];
@@ -1029,7 +1033,7 @@ State + validity:
 const [sugar, setSugar] = useState(entry.sugarG != null ? String(entry.sugarG) : "");
 const numericSugar = sugar.trim() === "" ? undefined : Number(sugar);
 const sugarValid = numericSugar === undefined || (!Number.isNaN(numericSugar) && numericSugar >= 0);
-const isValid = label.trim() !== "" && amount !== "" && !Number.isNaN(numericAmount) && numericAmount >= 0 && sugarValid;
+const isValid = label.trim() !== "" && amount !== "" && !Number.isNaN(numericAmount) && numericAmount >= 0 && (type !== "debit" || sugarValid);
 ```
 
 `handleSave`:
@@ -1214,7 +1218,15 @@ return (
 );
 ```
 
-When dividers are active, drop the per-entry `borderBottom` logic's dependence on `idx` being last (the divider rows carry the separation); keep it for the no-divider path. Also drop the `{formatDate(entry.date)} · ` prefix from each row's caption **only when `daySummaries` is provided** (the divider now states the date):
+When dividers are active, an entry row gets a `borderBottom` only when the next entry in the array exists and has the same date (i.e., another row follows within the same day group); otherwise "none" — the divider rows carry the day-boundary separation. Keep the existing `idx < entries.length - 1` ternary as-is for the no-divider path:
+
+```tsx
+borderBottom: daySummaries
+  ? (entries[idx + 1] && entries[idx + 1].date === entry.date ? `1px solid ${colors.divider}` : "none")
+  : (idx < entries.length - 1 ? `1px solid ${colors.divider}` : "none"),
+```
+
+Also drop the `{formatDate(entry.date)} · ` prefix from each row's caption **only when `daySummaries` is provided** (the divider now states the date):
 
 ```tsx
 <div style={{ fontSize: 12, color: colors.faint, marginTop: 2 }}>

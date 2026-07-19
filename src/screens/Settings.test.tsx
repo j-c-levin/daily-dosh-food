@@ -8,7 +8,7 @@ import { useAppState, exportJSON } from "../lib/store";
 import type { Settings } from "../lib/types";
 import { testApiKey } from "../lib/ai";
 
-const settings: Settings = { tdee: 2300, deficit: 500, anchorDate: "2026-07-01", periodLengthDays: 14, model: "claude-haiku-4-5" };
+const settings: Settings = { tdee: 2300, deficit: 500, sugarBudget: 30, anchorDate: "2026-07-01", periodLengthDays: 14, model: "claude-haiku-4-5" };
 
 const settingsWithStats: Settings = {
   ...settings,
@@ -114,7 +114,7 @@ test("import replaces state on success", async () => {
   act(() => hook.result.current.completeOnboarding(settings));
   render(<SettingsScreen app={hook.result.current} onBack={vi.fn()} />);
 
-  const backup = exportJSON({ schemaVersion: 1, settings: settingsWithStats, periods: [] });
+  const backup = exportJSON({ schemaVersion: 2, settings: settingsWithStats, periods: [] });
   const file = new File([backup], "backup.json", { type: "application/json" });
   const input = screen.getByLabelText(/import/i);
   await user.upload(input, file);
@@ -135,7 +135,7 @@ test("import preserves the current in-browser API key when the backup has none",
   render(<SettingsScreen app={hook.result.current} onBack={vi.fn()} />);
 
   // Simulate a backup exported (and thus key-stripped) before this key existed.
-  const backup = exportJSON({ schemaVersion: 1, settings: settingsWithStats, periods: [] });
+  const backup = exportJSON({ schemaVersion: 2, settings: settingsWithStats, periods: [] });
   const file = new File([backup], "backup.json", { type: "application/json" });
   const input = screen.getByLabelText(/import/i);
   await user.upload(input, file);
@@ -191,7 +191,7 @@ test("saving budget after import uses the resynced (imported) values, not stale 
   const { rerender } = render(<SettingsScreen app={hook.result.current} onBack={vi.fn()} />);
 
   const importedSettings: Settings = { ...settings, tdee: 2600, deficit: 400 };
-  const backup = exportJSON({ schemaVersion: 1, settings: importedSettings, periods: [] });
+  const backup = exportJSON({ schemaVersion: 2, settings: importedSettings, periods: [] });
   const file = new File([backup], "backup.json", { type: "application/json" });
   const input = screen.getByLabelText(/import/i);
   await user.upload(input, file);
@@ -225,6 +225,19 @@ test("an unsaved API key draft survives an unrelated Budget save", async () => {
   rerender(<SettingsScreen app={hook.result.current} onBack={vi.fn()} />);
 
   expect(screen.getByLabelText(/api key/i)).toHaveValue("sk-ant-draft");
+});
+
+test("saving a changed sugar budget persists it and updates the live period", async () => {
+  localStorage.clear();
+  const user = userEvent.setup();
+  const hook = renderHook(() => useAppState());
+  act(() => hook.result.current.completeOnboarding(settings));
+  render(<SettingsScreen app={hook.result.current} onBack={vi.fn()} />);
+  const input = screen.getByLabelText(/sugar budget/i);
+  await user.clear(input);
+  await user.type(input, "25");
+  await user.click(screen.getByRole("button", { name: /^save$/i }));
+  expect(hook.result.current.state.settings!.sugarBudget).toBe(25);
 });
 
 test("back button calls onBack", async () => {

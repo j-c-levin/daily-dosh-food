@@ -42,40 +42,42 @@ describe("scoreCall", () => {
     text: "100 press ups",
     expectedType: "credit",
     kcalRange: [20, 120],
+    sugarRange: [0, 0],
   };
 
   test("correct type and in-range amount", () => {
-    expect(scoreCall({ label: "x", type: "credit", amount: 60 }, fixture)).toEqual({
+    expect(scoreCall({ label: "x", type: "credit", amount: 60, sugarG: 0 }, fixture)).toEqual({
       typeCorrect: true,
       kcalInRange: true,
+      sugarInRange: true,
     });
   });
 
   test("wrong type", () => {
-    expect(scoreCall({ label: "x", type: "debit", amount: 60 }, fixture).typeCorrect).toBe(false);
+    expect(scoreCall({ label: "x", type: "debit", amount: 60, sugarG: 0 }, fixture).typeCorrect).toBe(false);
   });
 
   test("range is inclusive at the lower bound", () => {
-    expect(scoreCall({ label: "x", type: "credit", amount: 20 }, fixture).kcalInRange).toBe(true);
+    expect(scoreCall({ label: "x", type: "credit", amount: 20, sugarG: 0 }, fixture).kcalInRange).toBe(true);
   });
 
   test("range is inclusive at the upper bound", () => {
-    expect(scoreCall({ label: "x", type: "credit", amount: 120 }, fixture).kcalInRange).toBe(true);
+    expect(scoreCall({ label: "x", type: "credit", amount: 120, sugarG: 0 }, fixture).kcalInRange).toBe(true);
   });
 
   test("just below the lower bound is out of range", () => {
-    expect(scoreCall({ label: "x", type: "credit", amount: 19 }, fixture).kcalInRange).toBe(false);
+    expect(scoreCall({ label: "x", type: "credit", amount: 19, sugarG: 0 }, fixture).kcalInRange).toBe(false);
   });
 
   test("just above the upper bound is out of range", () => {
-    expect(scoreCall({ label: "x", type: "credit", amount: 121 }, fixture).kcalInRange).toBe(false);
+    expect(scoreCall({ label: "x", type: "credit", amount: 121, sugarG: 0 }, fixture).kcalInRange).toBe(false);
   });
 });
 
 describe("summarize", () => {
   test("cost math: 200 in + 60 out tokens on haiku pricing", () => {
     const calls: ScoredCall[] = [
-      { ms: 100, inputTokens: 200, outputTokens: 60, error: false, typeCorrect: true, kcalInRange: true },
+      { ms: 100, inputTokens: 200, outputTokens: 60, error: false, typeCorrect: true, kcalInRange: true, sugarInRange: true },
     ];
     const haiku = { input: 1, output: 5 }; // USD per MTok
     const summary = summarize(calls, haiku);
@@ -86,7 +88,7 @@ describe("summarize", () => {
 
   test("unknown model pricing reports null cost with a note", () => {
     const calls: ScoredCall[] = [
-      { ms: 100, inputTokens: 200, outputTokens: 60, error: false, typeCorrect: true, kcalInRange: true },
+      { ms: 100, inputTokens: 200, outputTokens: 60, error: false, typeCorrect: true, kcalInRange: true, sugarInRange: true },
     ];
     const summary = summarize(calls, null);
     expect(summary.totalCostUsd).toBeNull();
@@ -96,9 +98,9 @@ describe("summarize", () => {
 
   test("aggregates n, errors, accuracy percentages, and latency stats", () => {
     const calls: ScoredCall[] = [
-      { ms: 100, inputTokens: 10, outputTokens: 10, error: false, typeCorrect: true, kcalInRange: true },
-      { ms: 200, inputTokens: 10, outputTokens: 10, error: false, typeCorrect: true, kcalInRange: false },
-      { ms: 300, inputTokens: 0, outputTokens: 0, error: true, typeCorrect: false, kcalInRange: false },
+      { ms: 100, inputTokens: 10, outputTokens: 10, error: false, typeCorrect: true, kcalInRange: true, sugarInRange: true },
+      { ms: 200, inputTokens: 10, outputTokens: 10, error: false, typeCorrect: true, kcalInRange: false, sugarInRange: false },
+      { ms: 300, inputTokens: 0, outputTokens: 0, error: true, typeCorrect: false, kcalInRange: false, sugarInRange: false },
     ];
     const summary = summarize(calls, { input: 1, output: 5 });
     expect(summary.n).toBe(3);
@@ -106,6 +108,7 @@ describe("summarize", () => {
     expect(summary.medianMs).toBe(200);
     expect(summary.typeAccuracyPct).toBeCloseTo((2 / 3) * 100);
     expect(summary.kcalInRangePct).toBeCloseTo((1 / 3) * 100);
+    expect(summary.sugarInRangePct).toBeCloseTo((1 / 3) * 100);
   });
 
   test("empty calls list", () => {
@@ -116,7 +119,19 @@ describe("summarize", () => {
     expect(summary.p95Ms).toBe(0);
     expect(summary.typeAccuracyPct).toBe(0);
     expect(summary.kcalInRangePct).toBe(0);
+    expect(summary.sugarInRangePct).toBe(0);
     expect(summary.totalCostUsd).toBe(0);
     expect(summary.costPer100Usd).toBe(0);
   });
+});
+
+test("scoreCall checks sugarG against the fixture's sugarRange", () => {
+  const fixture = { text: "cola", expectedType: "debit" as const, kcalRange: [180, 250] as [number, number], sugarRange: [40, 60] as [number, number] };
+  expect(scoreCall({ label: "cola", type: "debit", amount: 210, sugarG: 53 }, fixture).sugarInRange).toBe(true);
+  expect(scoreCall({ label: "cola", type: "debit", amount: 210, sugarG: 5 }, fixture).sugarInRange).toBe(false);
+});
+
+test("summarize reports sugarInRangePct", () => {
+  const call = { ms: 1, inputTokens: 0, outputTokens: 0, error: false, typeCorrect: true, kcalInRange: true, sugarInRange: true };
+  expect(summarize([call, { ...call, sugarInRange: false }], null).sugarInRangePct).toBe(50);
 });

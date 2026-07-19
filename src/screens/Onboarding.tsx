@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Activity, Settings, Sex, UserStats } from "../lib/types";
-import { DEFAULT_MODEL } from "../lib/types";
+import { DEFAULT_MODEL, DEFAULT_SUGAR_BUDGET_G } from "../lib/types";
 import { tdee, ACTIVITY_LABELS } from "../lib/tdee";
 import { todayISO } from "../lib/period";
 import {
@@ -69,6 +69,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     onComplete({
       tdee: effectiveTdee,
       deficit: deficitNum,
+      sugarBudget: DEFAULT_SUGAR_BUDGET_G,
       stats,
       anchorDate: todayISO(),
       periodLengthDays: 14,

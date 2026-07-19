@@ -10,10 +10,10 @@ vi.mock("../lib/ai", () => ({
 import Dashboard from "./Dashboard";
 import { useAppState } from "../lib/store";
 import { parseEntry, type ParsedEntry } from "../lib/ai";
-import type { Period, Settings } from "../lib/types";
+import type { Entry, Period, Settings } from "../lib/types";
 
 const settings: Settings = {
-  tdee: 2300, deficit: 500, anchorDate: "2026-07-01", periodLengthDays: 14, model: "claude-haiku-4-5", apiKey: "k",
+  tdee: 2300, deficit: 500, sugarBudget: 30, anchorDate: "2026-07-01", periodLengthDays: 14, model: "claude-haiku-4-5", apiKey: "k",
 };
 
 beforeEach(() => {
@@ -38,7 +38,7 @@ function setup() {
 test("shows balance, pace and stat row", () => {
   const { view } = setup();
   view();
-  expect(screen.getByText(/in credit this period/i)).toBeInTheDocument();
+  expect(screen.getByText(/left today/i)).toBeInTheDocument();
   expect(screen.getByText(/daily budget/i)).toBeInTheDocument();
   expect(screen.getByText(/earned back/i)).toBeInTheDocument();
 });
@@ -107,10 +107,11 @@ test("caption shows a this-period/next-period split when an imported backup's pe
     startDate: hook.result.current.current!.startDate,
     endDate: hook.result.current.current!.endDate,
     budgetPerDay: 1800,
+    sugarBudgetPerDay: 30,
     entries: [],
   };
   act(() =>
-    hook.result.current.replaceState({ schemaVersion: 1, settings: importedSettings, periods: [openPeriod] })
+    hook.result.current.replaceState({ schemaVersion: 2, settings: importedSettings, periods: [openPeriod] })
   );
   rerender(
     <Dashboard
@@ -123,4 +124,84 @@ test("caption shows a this-period/next-period split when an imported backup's pe
 
   const caption = screen.getByText(/from next period/i);
   expect(caption).toHaveTextContent("1800 kcal a day this period · 1500 from next period");
+});
+
+const day = (over: Partial<Entry>): Entry => ({
+  id: crypto.randomUUID(), label: "x", type: "debit", amount: 0, date: "2026-07-01", source: "manual", ...over,
+});
+
+function renderWithEntries(entries: Entry[]) {
+  const { hook, view } = setup();
+  const { rerender } = view();
+  const open: Period = {
+    id: "open-1", startDate: "2026-07-01", endDate: "2026-07-14",
+    budgetPerDay: 1800, sugarBudgetPerDay: 30, entries,
+  };
+  act(() => hook.result.current.replaceState({
+    schemaVersion: 2, settings: hook.result.current.state.settings!, periods: [open],
+  }));
+  rerender(
+    <Dashboard app={hook.result.current} settings={hook.result.current.state.settings!} onShowStamps={vi.fn()} onShowSettings={vi.fn()} />
+  );
+  return hook;
+}
+
+test("big number shows calories left today including the decayed bonus", () => {
+  // Day 1: ate 1800 → leftover 0. Day 2: ate 1200 → leftover 600.
+  // Today (day 3): bonus = 0.30×600 = 180, left = 1800 + 180 = 1980.
+  renderWithEntries([
+    day({ amount: 1800, date: "2026-07-01" }),
+    day({ amount: 1200, date: "2026-07-02" }),
+  ]);
+  expect(screen.getByText("Left today")).toBeInTheDocument();
+  expect(screen.getByText("+1980")).toBeInTheDocument();
+  expect(screen.getByText(/includes \+180 fading bonus/)).toBeInTheDocument();
+});
+
+test("debt carry shows a negative subline", () => {
+  // Day 1: ate 1800 → leftover 0. Day 2: ate 2800 → leftover −1000.
+  // Today: bonus = 0.50×−1000 = −500, left = 1300.
+  renderWithEntries([
+    day({ amount: 1800, date: "2026-07-01" }),
+    day({ amount: 2800, date: "2026-07-02" }),
+  ]);
+  expect(screen.getByText("+1300")).toBeInTheDocument();
+  expect(screen.getByText(/−500 carried from yesterday/)).toBeInTheDocument();
+});
+
+test("sugar gauge shows used vs decayed allowance", () => {
+  // Sugar: day 1 used 30 → leftover 0. Day 2 used 10 → leftover 20.
+  // Today: bonus = 0.30×20 = 6 → allowance 36; today's entry has 12 g.
+  renderWithEntries([
+    day({ amount: 1800, sugarG: 30, date: "2026-07-01" }),
+    day({ amount: 1800, sugarG: 10, date: "2026-07-02" }),
+    day({ amount: 300, sugarG: 12, date: "2026-07-03" }),
+  ]);
+  expect(screen.getByText("12g of 36g")).toBeInTheDocument();
+});
+
+test("renders nothing (doesn't crash) when today precedes the only period's start date", () => {
+  // System date is pinned to 2026-07-03; give the app a single open period
+  // that starts the day after "today" (e.g. a timezone shift or clock
+  // correction moved `today` backwards). computeLedger returns [] in that
+  // case, so calToday/sugarToday are undefined — Dashboard must bail out
+  // rather than throw on the missing tail entry.
+  const { hook, view } = setup();
+  const { rerender, container } = view();
+  const open: Period = {
+    id: "open-1", startDate: "2026-07-04", endDate: "2026-07-17",
+    budgetPerDay: 1800, sugarBudgetPerDay: 30, entries: [],
+  };
+  act(() => {
+    hook.result.current.replaceState({
+      schemaVersion: 2, settings: hook.result.current.state.settings!, periods: [open],
+    });
+  });
+  expect(() =>
+    rerender(
+      <Dashboard app={hook.result.current} settings={hook.result.current.state.settings!} onShowStamps={vi.fn()} onShowSettings={vi.fn()} />
+    )
+  ).not.toThrow();
+  expect(container.firstChild).toBeNull();
+  expect(screen.queryByText(/left today/i)).not.toBeInTheDocument();
 });

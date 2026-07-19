@@ -5,7 +5,7 @@ import { colors, mono, inputStyle, labelStyle, buttonGhost } from "../theme";
 
 interface EditSheetProps {
   entry: Entry;
-  onSave: (patch: { label: string; type: EntryType; amount: number }) => void;
+  onSave: (patch: { label: string; type: EntryType; amount: number; sugarG?: number }) => void;
   onDelete: () => void;
   onClose: () => void;
 }
@@ -48,15 +48,18 @@ export default function EditSheet({ entry, onSave, onDelete, onClose }: EditShee
   const [label, setLabel] = useState(entry.label);
   const [type, setType] = useState<EntryType>(entry.type);
   const [amount, setAmount] = useState(String(entry.amount));
+  const [sugar, setSugar] = useState(entry.sugarG != null ? String(entry.sugarG) : "");
 
   const numericAmount = Number(amount);
-  const isValid = label.trim() !== "" && amount !== "" && !Number.isNaN(numericAmount) && numericAmount >= 0;
+  const numericSugar = sugar.trim() === "" ? undefined : Number(sugar);
+  const sugarValid = numericSugar === undefined || (!Number.isNaN(numericSugar) && numericSugar >= 0);
+  const isValid = label.trim() !== "" && amount !== "" && !Number.isNaN(numericAmount) && numericAmount >= 0 && (type !== "debit" || sugarValid);
 
   const handleSave = () => {
     if (!isValid) {
       return;
     }
-    onSave({ label, type, amount: numericAmount });
+    onSave({ label, type, amount: numericAmount, sugarG: type === "debit" ? numericSugar : undefined });
   };
 
   return (
@@ -133,6 +136,22 @@ export default function EditSheet({ entry, onSave, onDelete, onClose }: EditShee
           onChange={(e) => setAmount(e.target.value)}
           style={{ ...inputStyle, fontFamily: mono, margin: "6px 0 18px" }}
         />
+
+        {type === "debit" && (
+          <>
+            <label style={labelStyle} htmlFor="edit-sheet-sugar">
+              Sugar (g free sugars, blank = unknown)
+            </label>
+            <input
+              id="edit-sheet-sugar"
+              type="number"
+              min="0"
+              value={sugar}
+              onChange={(e) => setSugar(e.target.value)}
+              style={{ ...inputStyle, fontFamily: mono, margin: "6px 0 18px" }}
+            />
+          </>
+        )}
 
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" onClick={onDelete} style={deleteButtonStyle}>

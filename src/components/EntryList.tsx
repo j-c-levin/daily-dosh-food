@@ -1,5 +1,12 @@
+import type { ReactNode } from "react";
 import type { Entry } from "../lib/types";
 import { colors, mono } from "../theme";
+import { sugarLevel, SUGAR_LEVEL_COLORS } from "../lib/sugar";
+
+export interface DaySummary {
+  kcalLeftover: number; // that day's ledger leftover (positive = finished under)
+  sugarUsedG: number;   // grams of free sugars consumed that day
+}
 
 interface EntryListProps {
   entries: Entry[];
@@ -7,6 +14,8 @@ interface EntryListProps {
   // Raw text of an in-flight submission, shown as a placeholder row above
   // the real entries while parseEntry resolves. Not a persisted Entry.
   pendingText?: string | null;
+  daySummaries?: Record<string, DaySummary>; // keyed by ISO date; enables dividers
+  today?: string;                            // ISO date rendered as "Today"
 }
 
 const PULSE_KEYFRAMES = `
@@ -33,7 +42,101 @@ function formatDate(iso: string): string {
   return `${d} ${months[m - 1]}`;
 }
 
-export default function EntryList({ entries, onSelect, pendingText }: EntryListProps) {
+export default function EntryList({ entries, onSelect, pendingText, daySummaries, today }: EntryListProps) {
+  const rows: ReactNode[] = [];
+  let prevDate: string | null = null;
+  // Divider grouping assumes entries are date-contiguous (same date never
+  // reappears after a different date is seen): the store prepends today's
+  // new entries, and EditSheet never lets a date be edited.
+  entries.forEach((entry, idx) => {
+    if (daySummaries && entry.date !== prevDate) {
+      const summary = daySummaries[entry.date];
+      const isToday = entry.date === today;
+      rows.push(
+        <div
+          key={`divider-${entry.date}`}
+          style={{
+            padding: "7px 16px",
+            background: colors.bg,
+            borderTop: prevDate ? `1px solid ${colors.divider}` : "none",
+            borderBottom: `1px solid ${colors.divider}`,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: colors.muted }}>
+            {isToday ? "Today" : formatDate(entry.date)}
+          </span>
+          {!isToday && summary && (
+            <span style={{ fontFamily: mono, fontSize: 11, color: summary.kcalLeftover >= 0 ? colors.positive : colors.negative }}>
+              finished {summary.kcalLeftover >= 0 ? "+" : "−"}
+              {Math.abs(Math.round(summary.kcalLeftover))} kcal · {Math.round(summary.sugarUsedG)}g sugar
+            </span>
+          )}
+        </div>
+      );
+    }
+    prevDate = entry.date;
+    rows.push(
+      <div
+        key={entry.id}
+        role="button"
+        tabIndex={0}
+        aria-label={entry.label}
+        onClick={() => onSelect(entry)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect(entry);
+          }
+        }}
+        style={{
+          padding: "14px 16px",
+          borderBottom: daySummaries
+            ? (entries[idx + 1] && entries[idx + 1].date === entry.date ? `1px solid ${colors.divider}` : "none")
+            : (idx < entries.length - 1 ? `1px solid ${colors.divider}` : "none"),
+          cursor: "pointer",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 14.5, fontWeight: 500 }}>{entry.label}</div>
+          <div style={{ fontSize: 12, color: colors.faint, marginTop: 2 }}>
+            {daySummaries ? sourceCaption(entry.source) : `${formatDate(entry.date)} · ${sourceCaption(entry.source)}`}
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          {entry.type === "debit" && entry.sugarG != null && (
+            <span
+              aria-label={`sugar level ${sugarLevel(entry.sugarG)}`}
+              style={{
+                fontFamily: mono, fontSize: 11, fontWeight: 700,
+                color: colors.bg, background: SUGAR_LEVEL_COLORS[sugarLevel(entry.sugarG)],
+                borderRadius: 6, padding: "2px 6px", marginRight: 8,
+              }}
+            >
+              S{sugarLevel(entry.sugarG)}
+            </span>
+          )}
+          <span
+            style={{
+              fontFamily: mono,
+              fontSize: 15,
+              fontWeight: 600,
+              color: entry.type === "credit" ? colors.positive : colors.negative,
+            }}
+          >
+            {entry.type === "credit" ? "+" : "−"}
+            {entry.amount}
+          </span>
+        </div>
+      </div>
+    );
+  });
+
   return (
     <div style={{ background: colors.card, borderRadius: 16, overflow: "hidden" }}>
       {pendingText && (
@@ -56,47 +159,7 @@ export default function EntryList({ entries, onSelect, pendingText }: EntryListP
           </div>
         </>
       )}
-      {entries.map((entry, idx) => (
-        <div
-          key={entry.id}
-          role="button"
-          tabIndex={0}
-          aria-label={entry.label}
-          onClick={() => onSelect(entry)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              onSelect(entry);
-            }
-          }}
-          style={{
-            padding: "14px 16px",
-            borderBottom: idx < entries.length - 1 ? `1px solid ${colors.divider}` : "none",
-            cursor: "pointer",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 14.5, fontWeight: 500 }}>{entry.label}</div>
-            <div style={{ fontSize: 12, color: colors.faint, marginTop: 2 }}>
-              {formatDate(entry.date)} · {sourceCaption(entry.source)}
-            </div>
-          </div>
-          <span
-            style={{
-              fontFamily: mono,
-              fontSize: 15,
-              fontWeight: 600,
-              color: entry.type === "credit" ? colors.positive : colors.negative,
-            }}
-          >
-            {entry.type === "credit" ? "+" : "−"}
-            {entry.amount}
-          </span>
-        </div>
-      ))}
+      {rows}
     </div>
   );
 }

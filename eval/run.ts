@@ -5,9 +5,8 @@ import fs from "node:fs";
 import path from "node:path";
 import Anthropic from "@anthropic-ai/sdk";
 import { SCHEMA, systemPrompt } from "../src/lib/ai";
-import type { EntryType } from "../src/lib/types";
 import { EVAL_STATS, FIXTURES, type Fixture } from "./fixtures";
-import { scoreCall, summarize, type ModelPricing, type ScoredCall } from "./score";
+import { scoreCall, summarize, type ModelPricing, type ParsedResult, type ScoredCall } from "./score";
 
 const DEFAULT_MODELS = ["claude-haiku-4-5", "claude-sonnet-4-6", "claude-sonnet-5"];
 
@@ -20,12 +19,6 @@ const PRICING: Record<string, ModelPricing> = {
 };
 
 const CONCURRENCY = 5;
-
-interface ParsedResult {
-  label: string;
-  type: EntryType;
-  amount: number;
-}
 
 interface RawCall {
   fixture: Fixture;
@@ -91,10 +84,10 @@ async function callModel(client: Anthropic, model: string, fixture: Fixture): Pr
 
 function toScoredCall(raw: RawCall): ScoredCall {
   if (raw.error || !raw.parsed) {
-    return { ms: raw.ms, inputTokens: raw.inputTokens, outputTokens: raw.outputTokens, error: true, typeCorrect: false, kcalInRange: false };
+    return { ms: raw.ms, inputTokens: raw.inputTokens, outputTokens: raw.outputTokens, error: true, typeCorrect: false, kcalInRange: false, sugarInRange: false };
   }
-  const { typeCorrect, kcalInRange } = scoreCall(raw.parsed, raw.fixture);
-  return { ms: raw.ms, inputTokens: raw.inputTokens, outputTokens: raw.outputTokens, error: false, typeCorrect, kcalInRange };
+  const { typeCorrect, kcalInRange, sugarInRange } = scoreCall(raw.parsed, raw.fixture);
+  return { ms: raw.ms, inputTokens: raw.inputTokens, outputTokens: raw.outputTokens, error: false, typeCorrect, kcalInRange, sugarInRange };
 }
 
 function timestampSlug(d: Date): string {
@@ -140,6 +133,7 @@ async function main() {
       p95Ms: Math.round(s.p95Ms),
       typeAcc: `${s.typeAccuracyPct.toFixed(0)}%`,
       kcalInRange: `${s.kcalInRangePct.toFixed(0)}%`,
+      sugarInRange: `${s.sugarInRangePct.toFixed(0)}%`,
       totalCostUsd: s.totalCostUsd == null ? "n/a" : `$${s.totalCostUsd.toFixed(4)}`,
       costPer100: s.costPer100Usd == null ? "n/a" : `$${s.costPer100Usd.toFixed(2)}`,
       note: s.costNote ?? "",
@@ -149,9 +143,9 @@ async function main() {
   const fixtureTable: Record<string, Record<string, string>> = {};
   for (const fixture of FIXTURES) fixtureTable[fixture.text] = {};
   for (const raw of allRaw) {
-    fixtureTable[raw.fixture.text][raw.model] = raw.error ? "ERROR" : `${raw.parsed!.type}/${raw.parsed!.amount}`;
+    fixtureTable[raw.fixture.text][raw.model] = raw.error ? "ERROR" : `${raw.parsed!.type}/${raw.parsed!.amount}/${raw.parsed!.sugarG}g`;
   }
-  console.log("\nPer-fixture outputs (type/amount):");
+  console.log("\nPer-fixture outputs (type/amount/sugarG):");
   console.table(fixtureTable);
 
   const outPath = path.join(import.meta.dirname, `results-${timestampSlug(new Date())}.json`);
