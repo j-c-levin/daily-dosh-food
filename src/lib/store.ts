@@ -99,13 +99,17 @@ export function useAppState() {
         const idx = s.periods.length - 1;
         const last = s.periods[idx];
         const budgetNow = settings.tdee - settings.deficit;
+        const sugarNow = settings.sugarBudget;
         // Budget changes take effect immediately on the current (unsealed) period —
-        // rewrite its budgetPerDay snapshot so accrual/balance/pace/sparkline
-        // retroactively recompute from the period's start date. Sealed periods
-        // (stamps) are immutable history and are never touched here.
-        if (last && !last.outcome && last.budgetPerDay !== budgetNow) {
+        // rewrite its budgetPerDay/sugarBudgetPerDay snapshot so accrual/balance/pace/
+        // sparkline retroactively recompute from the period's start date. Sealed
+        // periods (stamps) are immutable history and are never touched here.
+        if (
+          last && !last.outcome &&
+          (last.budgetPerDay !== budgetNow || last.sugarBudgetPerDay !== sugarNow)
+        ) {
           const periods = [...s.periods];
-          periods[idx] = { ...last, budgetPerDay: budgetNow };
+          periods[idx] = { ...last, budgetPerDay: budgetNow, sugarBudgetPerDay: sugarNow };
           return { ...s, settings, periods };
         }
         return { ...s, settings };

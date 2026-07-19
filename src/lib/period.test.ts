@@ -1,6 +1,7 @@
 import {
   addDays, daysBetween, makePeriod, daysElapsed, accruedBudget, entryTotals,
   balance, paceInfo, rollover, currentPeriod, dailyBalances, stampCaption,
+  sugarConsumed,
 } from "./period";
 import type { AppState, Entry, Period } from "./types";
 
@@ -82,4 +83,21 @@ test("stampCaption flags recovery dips", () => {
   expect(stampCaption(sealed, 1)).toMatch(/didn't spread/);
   expect(stampCaption(sealed, 0)).toBeNull();
   expect(stampCaption([mk("negative"), mk("negative"), mk("positive")], 1)).toBeNull();
+});
+
+test("sealing sets sugarOutcome from undecayed totals", () => {
+  const base = rollover(settingsState(), "2026-07-01");
+  // 14 days × 30 g = 420 g allowance. 400 g → under; 440 g → over.
+  base.periods[0].entries = [entry({ type: "debit", amount: 100, sugarG: 400, date: "2026-07-02" })];
+  expect(rollover(base, "2026-07-20").periods[0].sugarOutcome).toBe("under");
+  base.periods[0].entries = [entry({ type: "debit", amount: 100, sugarG: 440, date: "2026-07-02" })];
+  expect(rollover(base, "2026-07-20").periods[0].sugarOutcome).toBe("over");
+});
+
+test("sugarConsumed sums debit sugarG, treating unknown as 0 and ignoring credits", () => {
+  expect(sugarConsumed([
+    entry({ type: "debit", sugarG: 12 }),
+    entry({ type: "debit" }),                    // unknown → 0
+    entry({ type: "credit", sugarG: 99 }),       // credits never count
+  ])).toBe(12);
 });

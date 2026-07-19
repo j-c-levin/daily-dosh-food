@@ -51,6 +51,12 @@ export function entryTotals(entries: Entry[]): { consumed: number; earned: numbe
   return { consumed, earned };
 }
 
+export function sugarConsumed(entries: Entry[]): number {
+  let total = 0;
+  for (const e of entries) if (e.type === "debit") total += e.sugarG ?? 0;
+  return total;
+}
+
 export function balance(period: Period, today: string): number {
   const { consumed, earned } = entryTotals(period.entries);
   return accruedBudget(period, today) - consumed + earned;
@@ -84,6 +90,9 @@ export function rollover(state: AppState, today: string): AppState {
   let last = periods[periods.length - 1];
   while (!last.outcome && daysBetween(last.endDate, today) > 0) {
     last.outcome = balance(last, last.endDate) >= 0 ? "positive" : "negative";
+    const lengthDays = daysBetween(last.startDate, last.endDate) + 1;
+    last.sugarOutcome =
+      sugarConsumed(last.entries) <= lengthDays * last.sugarBudgetPerDay ? "under" : "over";
     const next = makePeriod(addDays(last.endDate, 1), budgetNow, sugarNow, settings.periodLengthDays);
     periods.push(next);
     last = next;

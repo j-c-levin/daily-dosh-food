@@ -98,6 +98,26 @@ test("hook: updateSettings rewrites the current period's budget immediately; sea
   expect(result.current.current!.budgetPerDay).toBe(settings.tdee - 300);
 });
 
+test("hook: sugarBudget change rewrites the live period's sugar snapshot; sealed periods stay untouched", () => {
+  const { result } = renderHook(() => useAppState());
+  act(() => result.current.completeOnboarding(settings));
+  act(() => result.current.updateSettings({ sugarBudget: 25 }));
+  expect(result.current.current!.sugarBudgetPerDay).toBe(25);
+
+  const sealed: Period = {
+    id: "sealed-1", startDate: "2026-06-17", endDate: "2026-06-30",
+    budgetPerDay: 1700, sugarBudgetPerDay: 30, entries: [], outcome: "positive", sugarOutcome: "under",
+  };
+  const open: Period = {
+    id: "open-1", startDate: "2026-07-01", endDate: "2026-07-14",
+    budgetPerDay: 1800, sugarBudgetPerDay: 30, entries: [],
+  };
+  act(() => result.current.replaceState({ schemaVersion: 2, settings, periods: [sealed, open] }));
+  act(() => result.current.updateSettings({ sugarBudget: 20 }));
+  expect(result.current.state.periods[0]).toMatchObject({ sugarBudgetPerDay: 30, sugarOutcome: "under" });
+  expect(result.current.current!.sugarBudgetPerDay).toBe(20);
+});
+
 test("hook: updateEntry and deleteEntry", () => {
   const { result } = renderHook(() => useAppState());
   act(() => result.current.completeOnboarding(settings));
