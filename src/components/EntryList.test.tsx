@@ -31,3 +31,27 @@ test("renders the old flat list when no daySummaries are provided", () => {
   expect(screen.queryByText(/finished/)).not.toBeInTheDocument();
   expect(screen.getByText("item")).toBeInTheDocument();
 });
+
+test("in divider mode, row borders only separate entries within the same day group", () => {
+  render(
+    <EntryList
+      entries={[
+        e({ date: "2026-07-03", label: "lunch" }),
+        e({ date: "2026-07-03", label: "dinner" }),
+        e({ date: "2026-07-02", label: "breakfast" }),
+      ]}
+      onSelect={() => {}}
+      today="2026-07-03"
+      daySummaries={{
+        "2026-07-03": { kcalLeftover: 1980, sugarUsedG: 12.4 },
+        "2026-07-02": { kcalLeftover: -220, sugarUsedG: 38 },
+      }}
+    />
+  );
+  // First row of the day: another same-day row follows, so it keeps the border.
+  expect(screen.getByRole("button", { name: "lunch" })).toHaveStyle({ borderBottom: "1px solid #22262D" });
+  // Last row of that day group: next row is a different date, so no border.
+  expect((screen.getByRole("button", { name: "dinner" }) as HTMLElement).style.borderBottomStyle).toBe("none");
+  // Last row overall: no border, matching the no-divider path's final-row behavior.
+  expect((screen.getByRole("button", { name: "breakfast" }) as HTMLElement).style.borderBottomStyle).toBe("none");
+});

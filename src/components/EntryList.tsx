@@ -90,7 +90,9 @@ export default function EntryList({ entries, onSelect, pendingText, daySummaries
         }}
         style={{
           padding: "14px 16px",
-          borderBottom: daySummaries ? `1px solid ${colors.divider}` : idx < entries.length - 1 ? `1px solid ${colors.divider}` : "none",
+          borderBottom: daySummaries
+            ? (entries[idx + 1] && entries[idx + 1].date === entry.date ? `1px solid ${colors.divider}` : "none")
+            : (idx < entries.length - 1 ? `1px solid ${colors.divider}` : "none"),
           cursor: "pointer",
           display: "flex",
           justifyContent: "space-between",

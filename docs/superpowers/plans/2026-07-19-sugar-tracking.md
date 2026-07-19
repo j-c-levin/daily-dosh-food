@@ -1218,7 +1218,15 @@ return (
 );
 ```
 
-When dividers are active, drop the per-entry `borderBottom` logic's dependence on `idx` being last (the divider rows carry the separation); keep it for the no-divider path. Also drop the `{formatDate(entry.date)} · ` prefix from each row's caption **only when `daySummaries` is provided** (the divider now states the date):
+When dividers are active, an entry row gets a `borderBottom` only when the next entry in the array exists and has the same date (i.e., another row follows within the same day group); otherwise "none" — the divider rows carry the day-boundary separation. Keep the existing `idx < entries.length - 1` ternary as-is for the no-divider path:
+
+```tsx
+borderBottom: daySummaries
+  ? (entries[idx + 1] && entries[idx + 1].date === entry.date ? `1px solid ${colors.divider}` : "none")
+  : (idx < entries.length - 1 ? `1px solid ${colors.divider}` : "none"),
+```
+
+Also drop the `{formatDate(entry.date)} · ` prefix from each row's caption **only when `daySummaries` is provided** (the divider now states the date):
 
 ```tsx
 <div style={{ fontSize: 12, color: colors.faint, marginTop: 2 }}>
